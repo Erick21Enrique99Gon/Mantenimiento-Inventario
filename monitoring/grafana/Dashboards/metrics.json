@@ -1,0 +1,401 @@
+{
+    "id": null,
+    "uid": null,
+    "title": "Inventario Monitoring Dashboard",
+    "tags": ["nestjs", "monitoring", "prometheus"],
+    "timezone": "browser",
+    "schemaVersion": 22,
+    "version": 1,
+    "panels": [
+      {
+        "type": "graph",
+        "title": "CPU Usage (Total)",
+        "targets": [
+          {
+            "expr": "system_cpu_usage",
+            "format": "time_series",
+            "legendFormat": "CPU Usage",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "percent",
+            "label": "Usage (%)",
+            "min": 0,
+            "max": 100
+          }
+        ],
+        "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
+        "id": 1
+      },
+      {
+        "type": "graph",
+        "title": "CPU Usage Breakdown",
+        "targets": [
+          {
+            "expr": "process_cpu_user_seconds_total",
+            "legendFormat": "User CPU",
+            "refId": "A"
+          },
+          {
+            "expr": "process_cpu_system_seconds_total",
+            "legendFormat": "System CPU",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "CPU Usage (seconds)",
+            "format": "short"
+          }
+        ],
+        "gridPos": { "h": 9, "w": 12, "x": 0, "y": 24 },
+        "id": 8
+      },
+      {
+        "type": "graph",
+        "title": "Event Loop Lag Percentiles",
+        "targets": [
+          {
+            "expr": "nodejs_eventloop_lag_p50_seconds",
+            "legendFormat": "50th Percentile",
+            "refId": "A"
+          },
+          {
+            "expr": "nodejs_eventloop_lag_p90_seconds",
+            "legendFormat": "90th Percentile",
+            "refId": "B"
+          },
+          {
+            "expr": "nodejs_eventloop_lag_p99_seconds",
+            "legendFormat": "99th Percentile",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Lag (seconds)",
+            "format": "seconds"
+          }
+        ],
+        "gridPos": { "h": 9, "w": 12, "x": 12, "y": 24 },
+        "id": 9
+      },
+      {
+        "type": "gauge",
+        "title": "Event Loop Lag Mean",
+        "targets": [
+          {
+            "expr": "nodejs_eventloop_lag_mean_seconds",
+            "format": "time_series",
+            "legendFormat": "Mean Lag",
+            "refId": "A"
+          }
+        ],
+        "gauge": {
+          "minValue": 0,
+          "maxValue": 0.02,
+          "thresholds": "0.005,0.01"
+        },
+        "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+        "id": 2
+      },
+      {
+        "type": "histogram",
+        "title": "HTTP Request Duration (GET 200)",
+        "targets": [
+          {
+            "expr": "http_request_duration_seconds_bucket{method=\"GET\",status_code=\"200\"}",
+            "format": "time_series",
+            "legendFormat": "Duration",
+            "refId": "A"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "yaxes": [
+          {
+            "label": "Request Count",
+            "format": "short"
+          }
+        ],
+        "gridPos": { "h": 9, "w": 12, "x": 0, "y": 6 },
+        "id": 3
+      },
+      {
+        "type": "graph",
+        "title": "Average HTTP Request Duration by Method",
+        "targets": [
+          {
+            "expr": "avg(rate(http_request_duration_seconds_sum{method=\"GET\"}[5m])) / avg(rate(http_request_duration_seconds_count{method=\"GET\"}[5m]))",
+            "format": "time_series",
+            "legendFormat": "GET",
+            "refId": "A"
+          },
+          {
+            "expr": "avg(rate(http_request_duration_seconds_sum{method=\"POST\"}[5m])) / avg(rate(http_request_duration_seconds_count{method=\"POST\"}[5m]))",
+            "format": "time_series",
+            "legendFormat": "POST",
+            "refId": "B"
+          },
+          {
+            "expr": "avg(rate(http_request_duration_seconds_sum{method=\"PUT\"}[5m])) / avg(rate(http_request_duration_seconds_count{method=\"PUT\"}[5m]))",
+            "format": "time_series",
+            "legendFormat": "PUT",
+            "refId": "C"
+          },
+          {
+            "expr": "avg(rate(http_request_duration_seconds_sum{method=\"DELETE\"}[5m])) / avg(rate(http_request_duration_seconds_count{method=\"DELETE\"}[5m]))",
+            "format": "time_series",
+            "legendFormat": "DELETE",
+            "refId": "D"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Duration (seconds)",
+            "format": "seconds"
+          }
+        ],
+        "gridPos": { "h": 9, "w": 12, "x": 0, "y": 63 },
+        "id": 21
+      },
+      {
+        "type": "gauge",
+        "title": "Heap Size Used",
+        "targets": [
+          {
+            "expr": "nodejs_heap_size_used_bytes",
+            "format": "time_series",
+            "legendFormat": "Heap Used",
+            "refId": "A"
+          }
+        ],
+        "gauge": {
+          "minValue": 0,
+          "maxValue": 50000000,
+          "thresholds": "10000000,20000000"
+        },
+        "gridPos": { "h": 6, "w": 6, "x": 12, "y": 6 },
+        "id": 4
+      },
+      {
+        "type": "graph",
+        "title": "Memory Usage",
+        "targets": [
+          {
+            "expr": "system_memory_usage",
+            "format": "time_series",
+            "legendFormat": "Memory Usage",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "bytes",
+            "label": "Memory (bytes)"
+          }
+        ],
+        "gridPos": { "h": 9, "w": 12, "x": 0, "y": 15 },
+        "id": 5
+      },
+      {
+        "type": "stat",
+        "title": "Active Node.js Resources",
+        "targets": [
+          {
+            "expr": "nodejs_active_resources_total",
+            "format": "time_series",
+            "legendFormat": "Active Resources",
+            "refId": "A"
+          }
+        ],
+        "stat": {
+          "colorMode": "value",
+          "unit": "short",
+          "thresholds": "5,10"
+        },
+        "gridPos": { "h": 6, "w": 6, "x": 0, "y": 24 },
+        "id": 7
+      },
+      {
+        "type": "graph",
+        "title": "Heap Size Usage",
+        "targets": [
+          {
+            "expr": "nodejs_heap_size_used_bytes",
+            "legendFormat": "Heap Used",
+            "refId": "A"
+          },
+          {
+            "expr": "nodejs_heap_size_total_bytes",
+            "legendFormat": "Heap Total",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Heap (bytes)",
+            "format": "bytes"
+          }
+        ],
+        "gridPos": { "h": 9, "w": 12, "x": 0, "y": 33 },
+        "id": 10
+      },
+      {
+        "type": "barchart",
+        "title": "Active Node.js Resources by Type",
+        "targets": [
+          {
+            "expr": "nodejs_active_resources",
+            "legendFormat": "{{type}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Active Resources",
+            "format": "short"
+          }
+        ],
+        "gridPos": { "h": 9, "w": 12, "x": 12, "y": 33 },
+        "id": 11
+      },
+      {
+        "type": "barchart",
+        "title": "Memory Usage Breakdown",
+        "targets": [
+          {
+            "expr": "process_resident_memory_bytes",
+            "legendFormat": "Resident Memory",
+            "refId": "A"
+          },
+          {
+            "expr": "process_virtual_memory_bytes",
+            "legendFormat": "Virtual Memory",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Memory (bytes)",
+            "format": "bytes"
+          }
+        ],
+        "gridPos": { "h": 9, "w": 12, "x": 0, "y": 42 },
+        "id": 12
+      },
+      {
+        "type": "histogram",
+        "title": "Garbage Collection Duration",
+        "targets": [
+          {
+            "expr": "nodejs_gc_duration_seconds_bucket",
+            "legendFormat": "GC Duration",
+            "refId": "A"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "yaxes": [
+          {
+            "label": "GC Duration (seconds)",
+            "format": "seconds"
+          }
+        ],
+        "gridPos": { "h": 9, "w": 12, "x": 12, "y": 42 },
+        "id": 13
+      },
+      {
+        "type": "gauge",
+        "title": "Open File Descriptors",
+        "targets": [
+          {
+            "expr": "process_open_fds",
+            "format": "time_series",
+            "legendFormat": "Open FDs",
+            "refId": "A"
+          }
+        ],
+        "gauge": {
+          "minValue": 0,
+          "maxValue": 100,
+          "thresholds": "50,80"
+        },
+        "gridPos": { "h": 6, "w": 6, "x": 12, "y": 51 },
+        "id": 14
+      },
+      {
+        "type": "graph",
+        "title": "Event Loop Lag Standard Deviation",
+        "targets": [
+          {
+            "expr": "nodejs_eventloop_lag_stddev_seconds",
+            "legendFormat": "Event Loop Lag Stddev",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Lag (seconds)",
+            "format": "seconds"
+          }
+        ],
+        "gridPos": { "h": 9, "w": 12, "x": 0, "y": 51 },
+        "id": 16
+      },
+      {
+        "type": "graph",
+        "title": "Virtual Memory Usage",
+        "targets": [
+          {
+            "expr": "process_virtual_memory_bytes",
+            "legendFormat": "Virtual Memory",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Memory (bytes)",
+            "format": "bytes"
+          }
+        ],
+        "gridPos": { "h": 9, "w": 12, "x": 12, "y": 51 },
+        "id": 17
+      },
+      {
+        "type": "barchart",
+        "title": "CPU Time Breakdown (User vs System)",
+        "targets": [
+          {
+            "expr": "process_cpu_user_seconds_total",
+            "legendFormat": "User CPU",
+            "refId": "A"
+          },
+          {
+            "expr": "process_cpu_system_seconds_total",
+            "legendFormat": "System CPU",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "CPU Time (seconds)",
+            "format": "short"
+          }
+        ],
+        "gridPos": { "h": 9, "w": 12, "x": 12, "y": 60 },
+        "id": 18
+      }
+    ],
+    "templating": { "list": [] },
+    "time": { "from": "now-15m", "to": "now" },
+    "timepicker": {
+      "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"]
+    },
+    "refresh": "5s",
+    "annotations": { "list": [] }
+  }

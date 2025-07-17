@@ -1,0 +1,25 @@
+services:
+
+  # Servicio para la base de datos
+  database:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: carlosmz87/pf_inventario_database:latest
+    container_name: pf_inventario_database_container
+    volumes:
+      - pf_inventario_data:/var/lib/mysql
+    networks:
+      - pf_inventario_external_network
+    ports:
+      - "3306:${DATABASE_PORT}"
+    env_file:
+      - .env
+  
+volumes:
+  pf_inventario_data:
+
+networks:
+  pf_inventario_external_network:
+    external: true 

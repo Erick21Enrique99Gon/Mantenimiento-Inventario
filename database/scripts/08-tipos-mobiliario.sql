@@ -1,0 +1,11 @@
+USE `Inventario`;
+INSERT INTO cat_tipo_mobiliario (descripcion) values ('Bandera');
+INSERT INTO cat_tipo_mobiliario (descripcion) values ('Anaquel');
+INSERT INTO cat_tipo_mobiliario (descripcion) values ('Banco');
+INSERT INTO cat_tipo_mobiliario (descripcion) values ('Escritorio');
+INSERT INTO cat_tipo_mobiliario (descripcion) values ('Silla');
+INSERT INTO cat_tipo_mobiliario (descripcion) values ('Librero');
+INSERT INTO cat_tipo_mobiliario (descripcion) values ('Mesa');
+INSERT INTO cat_tipo_mobiliario (descripcion) values ('Papelera');
+INSERT INTO cat_tipo_mobiliario (descripcion) values ('Racket');
+INSERT INTO cat_tipo_mobiliario (descripcion) values ('Pizarron');

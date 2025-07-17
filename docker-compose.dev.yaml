@@ -1,0 +1,71 @@
+services:
+  backend:
+    platform: linux/amd64
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: carlosmz87/pf_inventario_backend:latest
+    container_name: pf_inventario_backend_container
+    ports:
+      - "3000:${BACKEND_PORT}"
+    volumes:
+      - ./backend/uploads:/app/uploads  
+    networks:
+      - pf_inventario_network
+      - pf_inventario_external_network
+    env_file:
+      - .env
+  frontend:
+    platform: linux/amd64
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: carlosmz87/pf_inventario_frontend:latest
+    container_name: pf_inventario_frontend_container
+    ports:
+      - "80:${FRONTEND_PORT}"
+    depends_on:
+      - backend
+    restart: always
+    networks:
+      - pf_inventario_network     
+    env_file:
+      - .env
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: pf_inventario_prometheus_container
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml  # Volumen para tu configuración personalizada de Prometheus
+    networks:
+      - pf_inventario_network
+    restart: always
+    depends_on:
+      - backend
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: pf_inventario_grafana_container
+    ports:
+      - "8080:3000"
+    volumes:
+      - pf_inventario_monitoring_grafana:/var/lib/grafana
+      - ./monitoring/grafana/Dashboards/metrics.json:/var/lib/grafana/provisioning/dashboards/metrics.json
+      - ./monitoring/grafana/provisioning/dashboard.yaml:/etc/grafana/provisioning/dashboards/dashboard.yaml
+    env_file:
+      - .env
+    networks:
+      - pf_inventario_network
+    restart: always
+    depends_on:
+      - prometheus
+
+volumes:
+  pf_inventario_monitoring_grafana:
+
+networks:
+  pf_inventario_network:
+  pf_inventario_external_network:
+    external: true
