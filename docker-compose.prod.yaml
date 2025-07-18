@@ -16,7 +16,7 @@ services:
     ports:
       - "3000:${BACKEND_PORT}"
     volumes:
-      - /home/ecys03/PracticaFinal-Aplicacion-Inventario/backend/uploads:/app/uploads
+      - ${RUTA_FOTOS}:/app/uploads
     networks:
       - pf_inventario_network 
     env_file:
