@@ -42,6 +42,9 @@ const ResourceDetails = Loadable(lazy(() => import("../resources/user-view/resou
 
 /* ***Reportes (Reports)*** */
 const LoansReports = Loadable(lazy(() => import("../reports/LoansReports")));
+const FurnitureReport = Loadable(lazy(() => import("../reports/FurnitureReport")));
+const DevicesReport = Loadable(lazy(() => import("../reports/DevicesReport")));
+
 
 /* ***Routes Configuration*** */
 const Router = [
@@ -86,6 +89,8 @@ const Router = [
     element: <FullLayout />,
     children: [
       { path: "", element: <LoansReports /> },
+      { path: "furniture", element: <FurnitureReport />},
+      { path: "devices", element: <DevicesReport /> },
     ],
   },
   {
