@@ -111,6 +111,7 @@ const Router = [
     path: "/auth",
     element: <BlankLayout />,
     children: [
+      { path: "register", element: <Register /> },
       { path: "login", element: <Login /> },
       { path: "404", element: <Error /> },
       { path: "*", element: <Navigate to="/auth/404" /> },
