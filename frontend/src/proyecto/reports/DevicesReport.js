@@ -31,30 +31,37 @@ const DevicesReport = () => {
     try {
       const recursos = await getRecursos();
       const dispositivos = recursos
-        .filter(r => r.equipo)
-        .map(r => ({
-          codigo: r.codigo,
-          descripcion: r.equipo.descripcion,
-          estado: r.estado?.descripcion || "Desconocido",
-          ubicacion: r.equipo.ubicacion?.descripcion || "No disponible",
-        }));
+  .filter(r => r.equipo)
+  .map(r => ({
+    codigoInventario: r.equipo.codigoInventario
+        ? typeof r.equipo.codigoInventario === "object"
+          ? r.equipo.codigoInventario.codigo || "N/A"
+          : r.equipo.codigoInventario
+        : "N/A",
+      descripcion: r.equipo.descripcion,
+      estado: r.estado?.descripcion || "Desconocido",
+      ubicacion: r.equipo.ubicacion?.descripcion || "No disponible",
+    }));
+
       setEquipos(dispositivos);
       setFiltered(dispositivos);
     } catch (error) {
-      console.error("❌ Error obteniendo equipos:", error);
+      console.error("Error obteniendo equipos:", error);
     }
   };
 
   const exportToCSV = () => {
+    const BOM = "\uFEFF"; 
     const header = "Código,Descripción,Estado,Ubicación\n";
     const rows = equipos.map(e =>
-      `${e.codigo},"${e.descripcion}",${e.estado},"${e.ubicacion}"`
+      `${e.codigoInventario},"${e.descripcion}",${e.estado},"${e.ubicacion}"`
     );
-    const csvContent = header + rows.join("\n");
+    const csvContent = BOM + header + rows.join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     saveAs(blob, "Reporte_Equipos.csv");
   };
+
 
   useEffect(() => {
     const result = equipos.filter(e =>
@@ -92,7 +99,7 @@ const DevicesReport = () => {
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((e, index) => (
                 <TableRow key={index}>
-                  <TableCell>{e.codigo}</TableCell>
+                  <TableCell>{e.codigoInventario}</TableCell>
                   <TableCell>{e.descripcion}</TableCell>
                   <TableCell>{e.estado}</TableCell>
                   <TableCell>{e.ubicacion}</TableCell>

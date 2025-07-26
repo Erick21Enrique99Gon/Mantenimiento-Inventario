@@ -33,7 +33,11 @@ const FurnitureReport = () => {
       const muebles = recursos
         .filter(r => r.mobiliario)
         .map(r => ({
-          codigo: r.codigo,
+          codigoInventario: r.mobiliario.codigoInventario
+            ? typeof r.mobiliario.codigoInventario === "object"
+              ? r.mobiliario.codigoInventario.codigo || "N/A"
+              : r.mobiliario.codigoInventario
+            : "N/A",
           descripcion: r.mobiliario.descripcion,
           estado: r.estado?.descripcion || "Desconocido",
           ubicacion: r.mobiliario.ubicacion?.descripcion || "No disponible",
@@ -41,20 +45,22 @@ const FurnitureReport = () => {
       setMobiliarios(muebles);
       setFiltered(muebles);
     } catch (error) {
-      console.error("❌ Error obteniendo mobiliarios:", error);
+      console.error("Error obteniendo mobiliarios:", error);
     }
   };
 
   const exportToCSV = () => {
+    const BOM = "\uFEFF";
     const header = "Código,Descripción,Estado,Ubicación\n";
     const rows = mobiliarios.map(m =>
-      `${m.codigo},"${m.descripcion}",${m.estado},"${m.ubicacion}"`
+      `${m.codigoInventario},"${m.descripcion}",${m.estado},"${m.ubicacion}"`
     );
-    const csvContent = header + rows.join("\n");
+    const csvContent = BOM + header + rows.join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     saveAs(blob, "Reporte_Mobiliario.csv");
   };
+
 
   useEffect(() => {
     const result = mobiliarios.filter(m =>
@@ -92,7 +98,7 @@ const FurnitureReport = () => {
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((m, index) => (
                 <TableRow key={index}>
-                  <TableCell>{m.codigo}</TableCell>
+                  <TableCell>{m.codigoInventario}</TableCell> 
                   <TableCell>{m.descripcion}</TableCell>
                   <TableCell>{m.estado}</TableCell>
                   <TableCell>{m.ubicacion}</TableCell>
