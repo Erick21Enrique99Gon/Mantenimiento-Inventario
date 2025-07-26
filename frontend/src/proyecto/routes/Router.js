@@ -46,6 +46,9 @@ const FurnitureReport = Loadable(lazy(() => import("../reports/FurnitureReport")
 const DevicesReport = Loadable(lazy(() => import("../reports/DevicesReport")));
 const BooksReport = Loadable(lazy(() => import("../reports/BooksReport")));
 
+/* ***Carga Masiva*** */
+const CsvImportTabs = Loadable(lazy(() => import("../imports/CsvImportTabs")));
+
 
 /* ***Routes Configuration*** */
 const Router = [
@@ -119,6 +122,14 @@ const Router = [
       { path: "*", element: <Navigate to="/auth/404" /> },
     ],
   },
+  {
+    path: "/imports",
+    element: <FullLayout />,
+    children: [
+      { path: "", element: <CsvImportTabs /> },
+    ],
+  },
+
 ];
 
 export default Router;

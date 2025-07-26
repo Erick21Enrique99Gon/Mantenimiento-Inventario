@@ -148,6 +148,15 @@ const Menuitems = [
         href: "/reports/devices",
         allowedRoles: ["Administrador", "Auxiliar"],
       },
+      { navlabel: true, subheader: "IMPORTACIONES",  
+      },
+      {
+        title: "Importar CSV",
+        icon: "upload",    
+        href: "/imports", 
+        allowedRoles: ["Administrador", "Auxiliar"],
+      },
+
 
     ],
   },
