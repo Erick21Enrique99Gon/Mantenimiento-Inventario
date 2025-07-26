@@ -37,13 +37,14 @@ const Return = Loadable(lazy(() => import("../returns/Return")));
 const Books = Loadable(lazy(() => import("../resources/user-view/Books")));
 const Devices = Loadable(lazy(() => import("../resources/user-view/Devices")));
 const Furniture = Loadable(lazy(() => import("../resources/user-view/Furniture")));
-const ResourceDetails = Loadable(lazy(() => import("../resources/user-view/resourceDetails"))); // 📌 Nueva importación
+const ResourceDetails = Loadable(lazy(() => import("../resources/user-view/resourceDetails"))); 
 
 
 /* ***Reportes (Reports)*** */
 const LoansReports = Loadable(lazy(() => import("../reports/LoansReports")));
 const FurnitureReport = Loadable(lazy(() => import("../reports/FurnitureReport")));
 const DevicesReport = Loadable(lazy(() => import("../reports/DevicesReport")));
+const BooksReport = Loadable(lazy(() => import("../reports/BooksReport")));
 
 
 /* ***Routes Configuration*** */
@@ -91,6 +92,7 @@ const Router = [
       { path: "", element: <LoansReports /> },
       { path: "furniture", element: <FurnitureReport />},
       { path: "devices", element: <DevicesReport /> },
+      { path: "books", element: <BooksReport /> },
     ],
   },
   {

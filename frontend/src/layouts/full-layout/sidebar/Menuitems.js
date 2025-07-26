@@ -131,6 +131,12 @@ const Menuitems = [
         allowedRoles: ["Administrador", "Auxiliar"],
       },
       {
+        title: "Reporte de Libros",
+        icon: "file-text",
+        href: "/reports/books",
+        allowedRoles: ["Administrador", "Auxiliar"], 
+      },
+      {
         title: "Reporte de Mobiliario",
         icon: "file-text",
         href: "/reports/furniture",
