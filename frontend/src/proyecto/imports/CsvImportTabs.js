@@ -57,13 +57,13 @@ const CsvImportTabs = () => {
 
     switch (tabIndex) {
       case 0:
-        uploadCsv("/api/import/books", file);
+        uploadCsv("http://localhost:3000/api/procedimientos/cargar-csv-libros", file);
         break;
       case 1:
-        uploadCsv("/api/import/furniture", file);
+        uploadCsv("http://localhost:3000/api/procedimientos/cargar-csv-mobiliario", file);
         break;
       case 2:
-        uploadCsv("/api/import/devices", file);
+        uploadCsv("http://localhost:3000/api/procedimientos/cargar-csv-equipo", file);
         break;
       default:
         break;
