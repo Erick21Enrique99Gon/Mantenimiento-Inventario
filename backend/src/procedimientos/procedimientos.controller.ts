@@ -6,6 +6,10 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { ProcedimientosService } from './procedimientos.service';
+import { memoryStorage } from 'multer';
+import * as csv from 'csv-parser'; // si quieres parsear el contenido
+import { Readable } from 'stream';
+import { console } from 'inspector';
 
 @Controller('procedimientos')
 export class ProcedimientosController {
@@ -237,5 +241,100 @@ async realizarDevolucion(
     return { error: `Error al registrar la devolución: ${error.message}` };
   }
 }
+
+  @Post('cargar-csv-libros')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+    }),
+  )
+  async cargarCSVLibros(@UploadedFile() file: Express.Multer.File) {
+    const resultados = [];
+    console.log(file);
+    const cleanedBuffer = Buffer.from(file.buffer.toString('utf8').replace(/^\uFEFF/, ''), 'utf8');
+    const libros = new Promise((resolve, reject) => {
+      const stream = Readable.from(cleanedBuffer);
+      console.log(stream);
+      stream
+        .pipe(csv({ separator: ';' }))
+        .on('data', (data) => resultados.push(data))
+        .on('end', () => {
+          console.log(resultados); // aquí tienes el contenido del CSV como JSON
+          resolve({ data: resultados });
+        })
+        .on('error', (err) => {
+          reject(err);
+        });
+    });
+    
+    const result = await this.procedimientosService.cargaMasicaLibro (resultados);
+    return {
+      mensaje: "carga masiva de libros",
+      resultado: result
+    };
+
+  }
+
+
+
+  @Post('cargar-csv-equipo')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+    }),
+  )
+  async cargarCSVEquipo(@UploadedFile() file: Express.Multer.File) {
+    const resultados = [];
+    const cleanedBuffer = Buffer.from(file.buffer.toString('utf8').replace(/^\uFEFF/, ''), 'utf8');
+
+    const equipo = await new Promise((resolve, reject) => {
+      const stream = Readable.from(cleanedBuffer);
+      stream
+        .pipe(csv({ separator: ';' }))
+        .on('data', (data) => resultados.push(data))
+        .on('end', () => {
+          resolve({ data: resultados });
+        })
+        .on('error', (err) => {
+          reject(err);
+        });
+    });
+    const result = await this.procedimientosService.cargaMasicaEquipo(resultados) 
+    return {
+      mensaje: "Carga de archivos",
+      resultado: result
+    };
+  }
+
+  
+
+  @Post('cargar-csv-mobiliario')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+    }),
+  )
+  async cargarCSVMobiliario(@UploadedFile() file: Express.Multer.File) {
+    const resultados = [];
+    const cleanedBuffer = Buffer.from(file.buffer.toString('utf8').replace(/^\uFEFF/, ''), 'utf8');
+    const mobiliario = await new Promise((resolve, reject) => {
+      const stream = Readable.from(cleanedBuffer);
+      stream
+        .pipe(csv({ separator: ';' }))
+        .on('data', (data) => resultados.push(data))
+        .on('end', () => {
+          resolve({ data: resultados });
+        })
+        .on('error', (err) => {
+          reject(err);
+        });
+    });
+    const result = await this.procedimientosService.cargaMasicaMobiliario (resultados);
+        return {
+      mensaje: "result.mensaje",
+      resultado: result
+    };
+
+  }
 
 }

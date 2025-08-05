@@ -1,9 +1,45 @@
-import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { DataSource } from 'typeorm';
+import { CodigoInventario } from '../codigo_inventario/entities/codigo_inventario.entity'
+import { RfidRegistro } from 'src/rfid_registro/entities/rfid_registro.entity';
 
-@Injectable()
+import { TipoMobiliario } from 'src/tipo_mobiliario/entities/tipo_mobiliario.entity';
+
+import { TipoEquipo } from 'src/tipo_equipo/entities/tipo_equipo.entity';
+import { CategoriaEquipo } from 'src/categoria_equipo/entities/categoria_equipo.entity';
+import { Ubicacion } from 'src/ubicacion/entities/ubicacion.entity';
+import { Equipo } from 'src/equipo/entities/equipo.entity';
+import { Mobiliario } from 'src/mobiliario/entities/mobiliario.entity';
+import { Editorial } from 'src/editorial/entities/editorial.entity';
+import { Libro } from 'src/libro/entities/libro.entity';
+import { CodigoLibro } from 'src/codigo_libro/entities/codigo_libro.entity';
+
+
 export class ProcedimientosService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    @InjectRepository(CodigoInventario)
+    private readonly CodigoInventario: Repository<CodigoInventario>,
+    @InjectRepository(RfidRegistro)
+    private readonly RfidRegistro: Repository<RfidRegistro>,
+    @InjectRepository(Ubicacion)
+    private readonly Ubicacion: Repository<Ubicacion>,
+    @InjectRepository(TipoEquipo)
+    private readonly TipoEquipo: Repository<TipoEquipo>,
+    @InjectRepository(Equipo)
+    private readonly Equipo: Repository<Equipo>,
+    @InjectRepository(CategoriaEquipo)
+    private readonly CategoriaEquipo: Repository<CategoriaEquipo>,
+    @InjectRepository(TipoMobiliario)
+    private readonly TipoMobiliario: Repository<TipoMobiliario>,
+    @InjectRepository(Editorial)
+    private readonly Editorial: Repository<Editorial>,
+    @InjectRepository(Libro)
+    private readonly Libro: Repository<Libro>,
+    @InjectRepository(CodigoLibro)
+    private readonly CodigoLibro: Repository<CodigoLibro>
+  ) {}
 
   private optionalValue(value: any): any {
     return value !== undefined && value !== null && value !== "" ? value : null;
@@ -251,5 +287,184 @@ async realizarPrestamo(body: any) {
       console.error('❌ Error en realizarDevolucion:', error);
       throw new Error(`Error al registrar devolución: ${error.message}`);
     }
+  }
+
+  async obtenerUnicosCodigoInventarioRFID(){
+    const codigosSolo = (await this.CodigoInventario.find()).map(item => item.codigo);
+    return {codigosSolo}
+  }
+
+  async comprobarCodigoInventario(codigosSolo: any[], codigo: string){
+    if (codigosSolo.includes(codigo)) {
+          throw new Error(`El código de inventario "${codigo}" ya existe.`);
+        }
+  }
+
+  async combrobarUndifined(value:string){
+    if (value !== undefined && value !== null && value !== "") {
+          throw new Error(`Faltan datos`);
+        }
+  }
+
+  async cargaMasicaEquipo(body:any){
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    const {codigosSolo} = await this.obtenerUnicosCodigoInventarioRFID();
+    var resultadoQuery = null;
+    try {
+      for (let index = 0; index < body.length; index++) {
+        const element = body[index];
+        await this.comprobarCodigoInventario(codigosSolo,element['codigo de inventario']);
+        const codigoInventarioNuevo= await queryRunner.manager.create(CodigoInventario, {
+          codigo: element['codigo de inventario'],
+        });
+        await queryRunner.manager.save(codigoInventarioNuevo);
+        var TipoEquipoId = await this.TipoEquipo.findOne({where: [{ descripcion: element['Tipo'] }]});
+        if (TipoEquipoId === null) {
+          TipoEquipoId = await queryRunner.manager.create(TipoEquipo, {
+            descripcion: element['Tipo'],
+          });
+          await queryRunner.manager.save(TipoEquipoId);
+        }
+        
+        var CategoriaEquipoId = await this.CategoriaEquipo.findOne({where: [{ descripcion: element['Categoria de Equipo'] }]});
+
+        if (CategoriaEquipoId === null){
+          const CategoriaEquipoIdNuevo = await queryRunner.manager.create(CategoriaEquipo, {
+            descripcion: element['Categoria de Equipo'],
+          });
+          await queryRunner.manager.save(CategoriaEquipoIdNuevo);
+          CategoriaEquipoId = await this.CategoriaEquipo.findOne({where: [{ descripcion: element['Categoria de Equipo'] }]});
+        }
+        const ubicacionId = await this.Ubicacion.findOne({where: [{ descripcion: element['Ubicacion'] }]});
+
+        var resultCreateEquipo = await queryRunner.manager.create(Equipo,{
+          codigoInventario: codigoInventarioNuevo,
+          descripcion: element['Descripcion'],
+          tresp: Number(element['TResp']),
+          valor: Number(element['Valor']),
+          rfid: null,
+          estado: { estadoId: 1 },
+          categoria_equipo: CategoriaEquipoId,
+          tipoEquipo: TipoEquipoId,
+          ubicacion: ubicacionId,
+        });
+        await queryRunner.manager.save(resultCreateEquipo);
+      }
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      resultadoQuery = await queryRunner.release();
+    }
+
+    return resultadoQuery
+  }
+  
+
+  async cargaMasicaMobiliario(body:any){
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    const codigosSolo = (await this.CodigoInventario.find()).map(item => item.codigo);
+        var resultadoQuery = null;
+    try {
+      for (let index = 0; index < body.length; index++) {
+        const element = body[index];
+        await this.comprobarCodigoInventario(codigosSolo,element['codigo de inventario']);
+        const codigoInventarioNuevo= await queryRunner.manager.create(CodigoInventario, {
+          codigo: element['codigo de inventario'],
+        });
+        await queryRunner.manager.save(codigoInventarioNuevo);
+
+        const ubicacionId = await this.Ubicacion.findOne({where: [{ descripcion: element['Ubicacion'] }]});
+
+        var tipoMobiliarioId = await this.TipoMobiliario.findOne({where: [{ descripcion: element['Tipo'] }]});
+        if (tipoMobiliarioId === null) {
+          tipoMobiliarioId = await queryRunner.manager.create(TipoMobiliario, {
+            descripcion: element['Tipo'],
+          });
+          await queryRunner.manager.save(tipoMobiliarioId);
+        }
+        
+        var resultCreateMobiliario = await queryRunner.manager.create(Mobiliario,{
+          codigoInventario: codigoInventarioNuevo,
+          descripcion: element['Descripcion'],
+          tresp: Number(element['TResp']),
+          valor: Number(element['Valor']),
+          rfid: null,
+          estado: { estadoId: 1 },
+          ubicacion: ubicacionId,
+          tipoMobiliario: tipoMobiliarioId
+        });
+        await queryRunner.manager.save(resultCreateMobiliario);
+      }
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      resultadoQuery = await queryRunner.release();
+    }
+
+    return resultadoQuery
+  }
+  
+
+  async cargaMasicaLibro(body:any){
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+        var resultadoQuery = null;
+    try {
+      for (let index = 0; index < body.length; index++) {
+        const element = body[index];
+
+        const ubicacionId = await this.Ubicacion.findOne({where: [{ descripcion: element['UBICACION'] }]});
+
+        var editorialId = await this.Editorial.findOne({where: [{ descripcion: element['EDITORIAL'] }]});
+        if (editorialId === null) {
+          editorialId = await queryRunner.manager.create(Editorial, {
+            descripcion: element['EDITORIAL'],
+          });
+          await queryRunner.manager.save(editorialId);
+        }
+
+        var codigoId = await this.CodigoLibro.findOne({where: [{ descripcion: element['Codigo'] }]});
+        if (editorialId === null) {
+          codigoId = await queryRunner.manager.create(CodigoLibro, {
+            descripcion:element['Codigo']
+          });
+          await queryRunner.manager.save(codigoId);
+        }
+        
+        var resultCreateEquipo = await queryRunner.manager.create(Libro,{
+          titulo: element['TITULO'],
+          autor:element['AUTOR'],
+          isbn:element['ISBN'],
+          edicion:element['EDICION'],
+          anio:element['Anio'],
+          numero:element['Numero'],
+          tresp: Number(element['TResp']),
+          valor: Number(element['Valor']),
+          rfid: null,
+          estado: { estadoId: 1 },
+          ubicacion: ubicacionId,
+          editorial:editorialId,
+          codigoLibro:codigoId
+        });
+        await queryRunner.manager.save(resultCreateEquipo);
+      }
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      resultadoQuery = await queryRunner.release();
+    }
+
+    return resultadoQuery
   }
 }
