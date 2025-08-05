@@ -52,7 +52,7 @@ const FurnitureReport = () => {
   const exportToCSV = () => {
     const BOM = "\uFEFF";
     const header = "Código,Descripción,Estado,Ubicación\n";
-    const rows = mobiliarios.map(m =>
+    const rows = filtered.map(m =>
       `${m.codigoInventario},"${m.descripcion}",${m.estado},"${m.ubicacion}"`
     );
     const csvContent = BOM + header + rows.join("\n");
@@ -60,6 +60,7 @@ const FurnitureReport = () => {
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     saveAs(blob, "Reporte_Mobiliario.csv");
   };
+
 
 
   useEffect(() => {
