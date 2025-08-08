@@ -10,6 +10,8 @@ import { memoryStorage } from 'multer';
 import * as csv from 'csv-parser'; // si quieres parsear el contenido
 import { Readable } from 'stream';
 import { console } from 'inspector';
+import { parse } from 'json2csv';
+import { Response } from 'express';
 
 @Controller('procedimientos')
 export class ProcedimientosController {
