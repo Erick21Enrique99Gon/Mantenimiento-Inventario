@@ -180,6 +180,12 @@ const Menuitems = [
     allowedRoles: ["Administrador"],
   },
   {
+    title: "Eliminar Usuario",
+    icon: "user-minus", 
+    href: "/users/delete",
+    allowedRoles: ["Administrador"],
+  },
+  {
     title: "Reset Password",
     icon: "lock",
     href: "/users/password-reset",
