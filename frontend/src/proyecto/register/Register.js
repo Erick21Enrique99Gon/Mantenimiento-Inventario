@@ -7,6 +7,7 @@ import PageContainer from "../../components/container/PageContainer";
 import { createUsuario as registerUsuario } from "../../services/usuarioService";
 import { getRoles } from "../../services/rolService";
 import { getCurrentUser } from "../../services/authService";
+
 const Register = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
@@ -20,128 +21,130 @@ const Register = () => {
     rolId: "",
   });
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
-    // Cargar los roles desde la API
-    useEffect(() => {
-            const fetchUser = async () => {
-        try {
-          const loggedUser = await getCurrentUser();
-          console.log("Usuario autenticado en ProfileDropdown:", loggedUser);
-
-          if (loggedUser && loggedUser.usuario) {
-            setUser(loggedUser.usuario);
-          } else {
-            console.warn("No se recibió un objeto de usuario válido.");
-            setUser(null);
-          }
-        } catch (error) {
-          console.error("Error obteniendo el usuario:", error);
+  // Cargar roles y usuario autenticado
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const loggedUser = await getCurrentUser();
+        if (loggedUser && loggedUser.usuario) {
+          setUser(loggedUser.usuario);
+        } else {
           setUser(null);
         }
-      };
-      async function fetchRoles() {
-        try {
-          const rolesData = await getRoles();
-          console.log("Roles obtenidos desde la API:", rolesData);
-
-          if (!Array.isArray(rolesData)) {
-            throw new Error("La API no está retornando un array de roles");
-          }
-          
-          setRoles(rolesData);
-        } catch (error) {
-          console.error("Error obteniendo roles:", error);
-          setErrorMessage("No se pudieron cargar los roles.");
-        }
+      } catch (error) {
+        console.error("Error obteniendo el usuario:", error);
+        setUser(null);
       }
+    };
 
-      fetchUser();
-      
-      fetchRoles();
-    }, []);
+    async function fetchRoles() {
+      try {
+        const rolesData = await getRoles();
+        if (!Array.isArray(rolesData)) {
+          throw new Error("La API no está retornando un array de roles");
+        }
+        setRoles(rolesData);
+      } catch (error) {
+        console.error("Error obteniendo roles:", error);
+        setErrorMessage("No se pudieron cargar los roles.");
+      }
+    }
 
-  // Manejar cambios en los campos del formulario
+    fetchUser();
+    fetchRoles();
+  }, []);
+
+  // Manejar cambios en los inputs
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // Si no hay usuario autenticado, asignar automáticamente el rol "Usuario"
   useEffect(() => {
-  if (!user && roles.length > 0) {
-    const usuarioRol = roles.find((rol) => rol.descripcion === 'Usuario');
-    if (usuarioRol) {
-      setFormData((prev) => ({
-        ...prev,
-        rolId: usuarioRol.rolId,
-      }));
+    if (!user && roles.length > 0) {
+      const usuarioRol = roles.find((rol) => rol.descripcion === "Usuario");
+      if (usuarioRol) {
+        setFormData((prev) => ({
+          ...prev,
+          rolId: usuarioRol.rolId,
+        }));
+      }
     }
-  }
-}, [user, roles]);
+  }, [user, roles]);
 
   function Login() {
     if (!user) {
-      return (<Typography variant="body2" sx={{ mt: 2, textAlign: "center" }}>
-                    ¿Ya tienes una cuenta?{" "}
-                    <Button
-                      variant="text"
-                      sx={{ color: "#1976d2", textDecoration: "none" }}
-                      onClick={() => navigate("/auth/login")} // 🔹 Redirige al login
-                    >
-                      Inicia sesión
-                    </Button>
-                  </Typography>);
+      return (
+        <Typography variant="body2" sx={{ mt: 2, textAlign: "center" }}>
+          ¿Ya tienes una cuenta?{" "}
+          <Button
+            variant="text"
+            sx={{ color: "#1976d2", textDecoration: "none" }}
+            onClick={() => navigate("/auth/login")}
+          >
+            Inicia sesión
+          </Button>
+        </Typography>
+      );
     }
-    return (<Typography variant="body2" sx={{ mt: 2, textAlign: "center" }}></Typography>);
+    return null;
   }
 
-  function Rol(){
+  function Rol() {
     if (!user) {
-      return(<FormControl fullWidth sx={{ mt: 2 }}>
-  <InputLabel id="rol-label">Usuario</InputLabel>
-  <Select
-    labelId="rol-label"
-    id="rolId"
-    name="rolId"
-    value={formData.rolId || ''}
-    onChange={handleChange}
-    required
-    disabled
-  >
-    {formData.rolId ? (
-      <MenuItem value={formData.rolId}>Usuario</MenuItem>
-    ) : (
-      <MenuItem disabled>Cargando roles...</MenuItem>
-    )}
-  </Select>
-</FormControl>
-
-              );
+      return (
+        <FormControl fullWidth sx={{ mt: 2 }}>
+          <InputLabel id="rol-label">Usuario</InputLabel>
+          <Select
+            labelId="rol-label"
+            id="rolId"
+            name="rolId"
+            value={formData.rolId || ""}
+            onChange={handleChange}
+            required
+            disabled
+          >
+            {formData.rolId ? (
+              <MenuItem value={formData.rolId}>Usuario</MenuItem>
+            ) : (
+              <MenuItem disabled>Cargando roles...</MenuItem>
+            )}
+          </Select>
+        </FormControl>
+      );
     }
-    return(<FormControl fullWidth sx={{ mt: 2 }}>
-                    <InputLabel id="rol-label">Rol</InputLabel>
-                    <Select
-                      labelId="rol-label"
-                      id="rolId"
-                      name="rolId"
-                      onChange={handleChange}
-                      required
-                      value={formData.rolId || ''}
-                    >
-                      {roles.length > 0 ? (
-                        roles.map((rol) => (
-                          <MenuItem key={rol.rolId} value={rol.rolId}>
-                            {rol.descripcion}
-                          </MenuItem>
-                        ))
-                      ) : (
-                        <MenuItem disabled>Cargando roles...</MenuItem>
-                      )}
-                    </Select>
-                  </FormControl>);
+    return (
+      <FormControl fullWidth sx={{ mt: 2 }}>
+        <InputLabel id="rol-label">Rol</InputLabel>
+        <Select
+          labelId="rol-label"
+          id="rolId"
+          name="rolId"
+          onChange={handleChange}
+          required
+          value={formData.rolId || ""}
+        >
+          {roles.length > 0 ? (
+            roles.map((rol) => (
+              <MenuItem key={rol.rolId} value={rol.rolId}>
+                {rol.descripcion}
+              </MenuItem>
+            ))
+          ) : (
+            <MenuItem disabled>Cargando roles...</MenuItem>
+          )}
+        </Select>
+      </FormControl>
+    );
   }
-  // Manejar el envío del formulario
+
+  // Manejar envío
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+    setSuccessMessage("");
 
     if (!formData.rolId) {
       setErrorMessage("Debe seleccionar un rol");
@@ -151,8 +154,23 @@ const Register = () => {
     try {
       const response = await registerUsuario(formData);
       console.log("Usuario registrado con éxito:", response);
-      if (!user){
-        navigate("/auth/login"); // Redirigir tras éxito
+
+      // ✅ Mensaje de éxito
+      setSuccessMessage("Usuario registrado exitosamente ✅");
+
+      // ✅ Limpiar casillas
+      setFormData({
+        nombres: "",
+        apellidos: "",
+        carnet: "",
+        dpi: "",
+        password: "",
+        rolId: user ? "" : formData.rolId, // Mantener el rol si es usuario normal
+      });
+
+      // ✅ Redirigir después de 2 segundos si no está logueado
+      if (!user) {
+        setTimeout(() => navigate("/auth/login"), 2000);
       }
     } catch (error) {
       console.error("Error en el registro:", error);
@@ -172,23 +190,62 @@ const Register = () => {
                 </Typography>
                 <Box sx={{ mt: 4 }} component="form" onSubmit={handleSubmit}>
                   <CustomFormLabel htmlFor="nombres">Nombres</CustomFormLabel>
-                  <CustomTextField id="nombres" name="nombres" variant="outlined" fullWidth onChange={handleChange} required />
+                  <CustomTextField
+                    id="nombres"
+                    name="nombres"
+                    variant="outlined"
+                    fullWidth
+                    value={formData.nombres}
+                    onChange={handleChange}
+                    required
+                  />
 
                   <CustomFormLabel htmlFor="apellidos">Apellidos</CustomFormLabel>
-                  <CustomTextField id="apellidos" name="apellidos" variant="outlined" fullWidth onChange={handleChange} required />
+                  <CustomTextField
+                    id="apellidos"
+                    name="apellidos"
+                    variant="outlined"
+                    fullWidth
+                    value={formData.apellidos}
+                    onChange={handleChange}
+                    required
+                  />
 
                   <CustomFormLabel htmlFor="carnet">Carnet</CustomFormLabel>
-                  <CustomTextField id="carnet" name="carnet" variant="outlined" fullWidth onChange={handleChange} required />
+                  <CustomTextField
+                    id="carnet"
+                    name="carnet"
+                    variant="outlined"
+                    fullWidth
+                    value={formData.carnet}
+                    onChange={handleChange}
+                    required
+                  />
 
                   <CustomFormLabel htmlFor="dpi">DPI</CustomFormLabel>
-                  <CustomTextField id="dpi" name="dpi" variant="outlined" fullWidth onChange={handleChange} required />
+                  <CustomTextField
+                    id="dpi"
+                    name="dpi"
+                    variant="outlined"
+                    fullWidth
+                    value={formData.dpi}
+                    onChange={handleChange}
+                    required
+                  />
 
                   <CustomFormLabel htmlFor="password">Contraseña</CustomFormLabel>
-                  <CustomTextField id="password" name="password" type="password" variant="outlined" fullWidth onChange={handleChange} required />
+                  <CustomTextField
+                    id="password"
+                    name="password"
+                    type="password"
+                    variant="outlined"
+                    fullWidth
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                  />
 
-                  {
-                    Rol()
-                  }
+                  {Rol()}
 
                   {errorMessage && (
                     <Typography color="error" sx={{ mt: 2 }}>
@@ -196,7 +253,20 @@ const Register = () => {
                     </Typography>
                   )}
 
-                  <Button color="secondary" variant="contained" size="large" fullWidth type="submit" sx={{ mt: 3, pt: "10px", pb: "10px" }}>
+                  {successMessage && (
+                    <Typography color="success.main" sx={{ mt: 2 }}>
+                      {successMessage}
+                    </Typography>
+                  )}
+
+                  <Button
+                    color="secondary"
+                    variant="contained"
+                    size="large"
+                    fullWidth
+                    type="submit"
+                    sx={{ mt: 3, pt: "10px", pb: "10px" }}
+                  >
                     Registrarse
                   </Button>
                   {Login()}

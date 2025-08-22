@@ -10,6 +10,7 @@ const FullLayout = Loadable(lazy(() => import("../../layouts/full-layout/FullLay
 /* ***Views**** */
 const Error = Loadable(lazy(() => import("../../views/authentication/Error")));
 const Register = Loadable(lazy(() => import("../register/Register")));
+const DeleteUser = Loadable(lazy(() => import("../delete/Delete")));
 const Login = Loadable(lazy(() => import("../login/Login")));
 const Home = Loadable(lazy(() => import("../home/Home")));
 
@@ -78,6 +79,7 @@ const Router = [
     element: <FullLayout />,
     children: [
       { path: "register", element: <Register /> },
+      { path: "delete", element: <DeleteUser /> }, 
       { path: "password-reset", element: <PasswordReset /> },
     ],
   },
