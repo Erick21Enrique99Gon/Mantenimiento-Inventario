@@ -11,7 +11,8 @@ import {
   TableRow,
   Paper,
   TablePagination,
-  TextField
+  TextField,
+  Grid
 } from "@mui/material";
 import { getRecursos } from "../../services/recursoService";
 import { saveAs } from "file-saver";
@@ -19,7 +20,13 @@ import { saveAs } from "file-saver";
 const FurnitureReport = () => {
   const [mobiliarios, setMobiliarios] = useState([]);
   const [filtered, setFiltered] = useState([]);
-  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState({
+    codigo: "",
+    descripcion: "",
+    estado: "",
+    ubicacion: "",
+    tipo: ""
+  });
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
@@ -41,6 +48,7 @@ const FurnitureReport = () => {
           descripcion: r.mobiliario.descripcion,
           estado: r.estado?.descripcion || "Desconocido",
           ubicacion: r.mobiliario.ubicacion?.descripcion || "No disponible",
+          tipo: r.mobiliario.tipoMobiliario?.descripcion || "No especificado"
         }));
       setMobiliarios(muebles);
       setFiltered(muebles);
@@ -51,9 +59,9 @@ const FurnitureReport = () => {
 
   const exportToCSV = () => {
     const BOM = "\uFEFF";
-    const header = "Código,Descripción,Estado,Ubicación\n";
-    const rows = mobiliarios.map(m =>
-      `${m.codigoInventario},"${m.descripcion}",${m.estado},"${m.ubicacion}"`
+    const header = "Código,Descripción,Estado,Ubicación,Tipo de Mobiliario\n";
+    const rows = filtered.map(m =>
+      `${m.codigoInventario},"${m.descripcion}",${m.estado},"${m.ubicacion}","${m.tipo}"`
     );
     const csvContent = BOM + header + rows.join("\n");
 
@@ -61,13 +69,27 @@ const FurnitureReport = () => {
     saveAs(blob, "Reporte_Mobiliario.csv");
   };
 
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
   useEffect(() => {
-    const result = mobiliarios.filter(m =>
-      m.descripcion.toLowerCase().includes(search.toLowerCase())
-    );
+    const result = mobiliarios.filter(m => {
+      return (
+        m.codigoInventario.toLowerCase().includes(filters.codigo.toLowerCase()) &&
+        m.descripcion.toLowerCase().includes(filters.descripcion.toLowerCase()) &&
+        m.estado.toLowerCase().includes(filters.estado.toLowerCase()) &&
+        m.ubicacion.toLowerCase().includes(filters.ubicacion.toLowerCase()) &&
+        m.tipo.toLowerCase().includes(filters.tipo.toLowerCase())
+      );
+    });
     setFiltered(result);
-  }, [search, mobiliarios]);
+    setPage(0);
+  }, [filters, mobiliarios]);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -75,22 +97,68 @@ const FurnitureReport = () => {
         Reporte de Mobiliario
       </Typography>
 
-      <TextField
-        label="Buscar por descripción"
-        variant="outlined"
-        fullWidth
-        sx={{ mb: 2 }}
-        onChange={e => setSearch(e.target.value)}
-      />
+      <Grid container spacing={2} sx={{ mb: 2 }}>
+        <Grid item xs={12} sm={6} md={2}>
+          <TextField
+            label="Filtrar por Código"
+            variant="outlined"
+            fullWidth
+            name="codigo"
+            value={filters.codigo}
+            onChange={handleFilterChange}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={2}>
+          <TextField
+            label="Filtrar por Descripción"
+            variant="outlined"
+            fullWidth
+            name="descripcion"
+            value={filters.descripcion}
+            onChange={handleFilterChange}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={2}>
+          <TextField
+            label="Filtrar por Estado"
+            variant="outlined"
+            fullWidth
+            name="estado"
+            value={filters.estado}
+            onChange={handleFilterChange}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={2}>
+          <TextField
+            label="Filtrar por Ubicación"
+            variant="outlined"
+            fullWidth
+            name="ubicacion"
+            value={filters.ubicacion}
+            onChange={handleFilterChange}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={2}>
+          <TextField
+            label="Filtrar por Tipo"
+            variant="outlined"
+            fullWidth
+            name="tipo"
+            value={filters.tipo}
+            onChange={handleFilterChange}
+          />
+        </Grid>
+      </Grid>
 
       <TableContainer component={Paper}>
-        <Table sx={{ minWidth: 800 }}>
+        <Table sx={{ minWidth: 1000 }}>
           <TableHead>
             <TableRow>
               <TableCell>Código</TableCell>
               <TableCell>Descripción</TableCell>
               <TableCell>Estado</TableCell>
               <TableCell>Ubicación</TableCell>
+              <TableCell>Tipo de Mobiliario</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -98,10 +166,11 @@ const FurnitureReport = () => {
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((m, index) => (
                 <TableRow key={index}>
-                  <TableCell>{m.codigoInventario}</TableCell> 
+                  <TableCell>{m.codigoInventario}</TableCell>
                   <TableCell>{m.descripcion}</TableCell>
                   <TableCell>{m.estado}</TableCell>
                   <TableCell>{m.ubicacion}</TableCell>
+                  <TableCell>{m.tipo}</TableCell>
                 </TableRow>
               ))}
           </TableBody>
@@ -115,7 +184,10 @@ const FurnitureReport = () => {
         page={page}
         rowsPerPageOptions={[5, 10, 15]}
         onPageChange={(event, newPage) => setPage(newPage)}
-        onRowsPerPageChange={e => setRowsPerPage(parseInt(e.target.value, 10))}
+        onRowsPerPageChange={e => {
+          setRowsPerPage(parseInt(e.target.value, 10));
+          setPage(0);
+        }}
       />
 
       <Box mt={2}>
