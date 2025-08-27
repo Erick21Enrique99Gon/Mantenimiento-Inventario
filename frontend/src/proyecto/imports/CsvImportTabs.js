@@ -16,7 +16,9 @@ import {
   TableRow,
   Alert,
 } from "@mui/material";
-
+import {
+  cargar
+} from "../../services/importService.js";
 const CsvImportTabs = () => {
   const [tabIndex, setTabIndex] = useState(0);
   const [file, setFile] = useState(null);
@@ -40,20 +42,21 @@ const CsvImportTabs = () => {
   const uploadCsv = async (endpoint, file) => {
     setLoading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
+      let response;
+      response = await cargar(endpoint, file)
+      // const formData = new FormData();
+      // formData.append("file", file);
 
-      const response = await fetch(endpoint, {
-        method: "POST",
-        body: formData,
-      });
+      // const response = await fetch(endpoint, {
+      //   method: "POST",
+      //   body: formData,
+      // });
 
-      if (!response.ok) {
-        throw new Error("Error al subir archivo");
-      }
-
-      const data = await response.json();
-      setResultados(data.resultado); // Guardamos exitosos y errores
+      // if (!response.ok) {
+      //   throw new Error("Error al subir archivo");
+      // }
+      console.log(response.resultado)
+      setResultados(response.resultado); // Guardamos exitosos y errores
 
       // Limpieza input
       setFile(null);
@@ -75,9 +78,9 @@ const CsvImportTabs = () => {
     }
 
     const endpoints = [
-      "http://localhost:3000/api/procedimientos/cargar-csv-libros",
-      "http://localhost:3000/api/procedimientos/cargar-csv-mobiliario",
-      "http://localhost:3000/api/procedimientos/cargar-csv-equipo",
+      "/cargar-csv-libros",
+      "/cargar-csv-mobiliario",
+      "/cargar-csv-equipo",
     ];
 
     uploadCsv(endpoints[tabIndex], file);
@@ -88,6 +91,12 @@ const CsvImportTabs = () => {
     "Importar Mobiliario desde CSV",
     "Importar Equipos desde CSV",
   ];
+
+  const requiredTitles = {
+  0: "TITULO; AUTOR; ISBN; EDITORIAL; Anio; EDICION; Numero; Codigo; UBICACION; RFID",
+  1: "codigo de inventario; Tipo; Descripcion; TResp; Valor; Ubicacion; RFID",
+  2: "codigo de inventario; Tipo; Descripcion; TResp; Valor; Ubicacion; RFID; Categoria de Equipo",
+};
 
   return (
     <Paper elevation={3} sx={{ p: 4, maxWidth: 900, mx: "auto", mt: 4 }}>
@@ -101,7 +110,9 @@ const CsvImportTabs = () => {
         <Tab label="Mobiliario" />
         <Tab label="Equipos" />
       </Tabs>
-
+      <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ mt: 1 }}>
+        <strong>Títulos necesarios CSV:</strong> {requiredTitles[tabIndex]}
+      </Typography>
       <Box sx={{ mt: 3 }}>
         <Typography variant="h6" gutterBottom textAlign="center">
           {titles[tabIndex]}
