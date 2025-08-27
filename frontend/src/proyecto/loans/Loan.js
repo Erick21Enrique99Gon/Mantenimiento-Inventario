@@ -12,6 +12,10 @@ import {
   Typography,
   Box,
   TablePagination,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
 } from "@mui/material";
 import { getUsuarios } from "../../services/usuarioService";
 import { getRecursos } from "../../services/recursoService";
@@ -42,6 +46,8 @@ const Loan = () => {
   const [pagePrestamos, setPagePrestamos] = useState(0);
   const [rowsPerPagePrestamos, setRowsPerPagePrestamos] = useState(5);
   const [usuarioLogueado, setUsuarioLogueado] = useState(null);
+  // Filtros
+  const [filtroTipo, setFiltroTipo] = useState("todos"); // "libros", "equipos", "mobiliario", "todos"
 
   useEffect(() => {
     const init = async () => {
@@ -72,31 +78,27 @@ const Loan = () => {
     }
   };
 
-  const fetchRecursos = async () => {
-    try {
-      const data = await getRecursos();
-      if (!Array.isArray(data)) {
-        console.error("❌ La respuesta de recursos no es un array:", data);
-        return;
-      }
-
-      // Filtrar solo recursos con RFID asignado y estado "Disponible"
-      const disponiblesConRFID = data.filter((recurso) => {
-        const estadoDescripcion = recurso.estado?.descripcion?.toLowerCase() || "";
-        const tieneRFID =
-          recurso.libro?.rfid?.rfid ||
-          recurso.equipo?.rfid?.rfid ||
-          recurso.mobiliario?.rfid?.rfid;
-
-        return estadoDescripcion === "disponible" && tieneRFID;
-      });
-
-      setRecursos(disponiblesConRFID);
-    } catch (error) {
-      console.error("❌ Error obteniendo recursos:", error);
-      setRecursos([]);
+const fetchRecursos = async () => {
+  try {
+    const data = await getRecursos();
+    if (!Array.isArray(data)) {
+      console.error("❌ La respuesta de recursos no es un array:", data);
+      return;
     }
-  };
+
+    // Filtrar solo recursos con estado "Disponible"
+    const disponibles = data.filter((recurso) => {
+      const estadoDescripcion = recurso.estado?.descripcion?.toLowerCase() || "";
+      return estadoDescripcion === "disponible";
+    });
+    console.log(disponibles)
+    setRecursos(disponibles);
+  } catch (error) {
+    console.error("❌ Error obteniendo recursos:", error);
+    setRecursos([]);
+  }
+};
+
 
   const fetchPrestamos = async () => {
     try {
@@ -204,6 +206,13 @@ const Loan = () => {
     }
   };
 
+  const recursosFiltrados = recursos.filter((recurso) => {
+    if (filtroTipo === "libros") return !!recurso.libro;
+    if (filtroTipo === "equipos") return !!recurso.equipo;
+    if (filtroTipo === "mobiliario") return !!recurso.mobiliario;
+    return true; // "todos"
+  });
+  
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" sx={{ mb: 3, fontWeight: "bold", textAlign: "center" }}>
@@ -268,32 +277,140 @@ const Loan = () => {
             fullWidth
             onChange={(e) => setSearchRecurso(e.target.value)}
           />
+
+          {/* Selector de tipo de recurso */}
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel>Tipo de recurso</InputLabel>
+            <Select
+              value={filtroTipo}
+              onChange={(e) => setFiltroTipo(e.target.value)}
+            >
+              <MenuItem value="todos">Todos</MenuItem>
+              <MenuItem value="libros">Libros</MenuItem>
+              <MenuItem value="equipos">Equipos</MenuItem>
+              <MenuItem value="mobiliario">Mobiliario</MenuItem>
+            </Select>
+          </FormControl>
+
           <TableContainer component={Paper} sx={{ mt: 2 }}>
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Descripción</TableCell>
-                  <TableCell>RFID</TableCell>
+                  {/* Columnas dinámicas según filtro */}
+                  {filtroTipo === "libros" && (
+                    <React.Fragment key="libros">
+                      <TableCell>Título</TableCell>
+                      <TableCell>Autor</TableCell>
+                      <TableCell>ISBN</TableCell>
+                      <TableCell>Editorial</TableCell>
+                      <TableCell>RFID</TableCell>
+                    </React.Fragment>
+                  )}
+                  {filtroTipo === "equipos" && (
+                    <>
+                      <TableCell>Descripción</TableCell>
+                      <TableCell>Categoria Equipo</TableCell>
+                      <TableCell>Tipo equipo</TableCell>
+                      <TableCell>Ubicación</TableCell>
+                      <TableCell>RFID</TableCell>
+                    </>
+                  )}
+                  {filtroTipo === "mobiliario" && (
+                    <>
+                      <TableCell>Descripción</TableCell>
+                      <TableCell>Tipo</TableCell>
+                      <TableCell>Ubicación</TableCell>
+                      <TableCell>RFID</TableCell>
+                    </>
+                  )}
+                  {filtroTipo === "todos" && (
+                    <>
+                      <TableCell>Descripción</TableCell>
+                      <TableCell>RFID</TableCell>
+                    </>
+                  )}
                 </TableRow>
               </TableHead>
+
               <TableBody>
-                {recursos
+                {recursosFiltrados
                   .filter((recurso) => {
                     const texto = searchRecurso.toLowerCase();
                     return (
-                      (recurso.libro?.titulo || recurso.equipo?.descripcion || recurso.mobiliario?.descripcion || "").toLowerCase().includes(texto) ||
-                      (recurso.libro?.rfid?.rfid || recurso.equipo?.rfid?.rfid || recurso.mobiliario?.rfid?.rfid || "").includes(texto)
+                      (recurso.libro?.titulo ||
+                        recurso.equipo?.descripcion ||
+                        recurso.mobiliario?.descripcion ||
+                        recurso.equipo?.categoria_equipo.descripcion||
+                        recurso.equipo?.tipoEquipo.descripcion ||
+                        recurso.mobiliario?.tipoMobiliario.descripcion ||
+                        recurso.equipo?.ubicacion.descripcion ||
+                        recurso.mobiliario?.ubicacion.descripcion ||
+                        "").toLowerCase().includes(texto) ||
+                      (recurso.libro?.rfid?.rfid ||
+                        recurso.equipo?.rfid?.rfid ||
+                        recurso.mobiliario?.rfid?.rfid ||
+                        "").includes(texto)
                     );
                   })
-                  .slice(pageRecursos * rowsPerPageRecursos, pageRecursos * rowsPerPageRecursos + rowsPerPageRecursos)
+                  .slice(
+                    pageRecursos * rowsPerPageRecursos,
+                    pageRecursos * rowsPerPageRecursos + rowsPerPageRecursos
+                  )
                   .map((recurso) => (
                     <TableRow
                       key={recurso.recursoId}
                       onClick={() => setSelectedRecurso(recurso)}
-                      sx={{ cursor: "pointer", backgroundColor: selectedRecurso?.recursoId === recurso.recursoId ? "#f0f0f0" : "" }}
+                      sx={{
+                        cursor: "pointer",
+                        backgroundColor:
+                          selectedRecurso?.recursoId === recurso.recursoId
+                            ? "#f0f0f0"
+                            : "",
+                      }}
                     >
-                      <TableCell>{recurso.libro?.titulo || recurso.equipo?.descripcion || recurso.mobiliario?.descripcion || "Sin descripción"}</TableCell>
-                      <TableCell>{recurso.libro?.rfid?.rfid || recurso.equipo?.rfid?.rfid || recurso.mobiliario?.rfid?.rfid || "N/A"}</TableCell>
+                      {/* Filas dinámicas */}
+                      {filtroTipo === "libros" && (
+                        <>
+                          <TableCell>{recurso.libro?.titulo || "Sin título"}</TableCell>
+                          <TableCell>{recurso.libro?.autor || "Desconocido"}</TableCell>
+                          <TableCell>{recurso.libro?.isbn || "N/A"}</TableCell>
+                          <TableCell>{recurso.libro?.editorial.descripcion || "N/A"}</TableCell>
+                          <TableCell>{recurso.libro?.rfid?.rfid || "N/A"}</TableCell>
+                        </>
+                      )}
+                      {filtroTipo === "equipos" && (
+                        <>
+                          <TableCell>{recurso.equipo?.descripcion || "Sin descripción"}</TableCell>
+                          <TableCell>{recurso.equipo?.categoria_equipo.descripcion || "N/A"}</TableCell>
+                          <TableCell>{recurso.equipo?.tipoEquipo.descripcion || "N/A"}</TableCell>
+                          <TableCell>{recurso.equipo?.ubicacion?.descripcion || "N/A"}</TableCell>
+                          <TableCell>{recurso.equipo?.rfid?.rfid || "N/A"}</TableCell>
+                        </>
+                      )}
+                      {filtroTipo === "mobiliario" && (
+                        <>
+                          <TableCell>{recurso.mobiliario?.descripcion || "Sin descripción"}</TableCell>
+                          <TableCell>{recurso.mobiliario?.tipoMobiliario.descripcion || "N/A"}</TableCell>
+                          <TableCell>{recurso.mobiliario?.ubicacion?.descripcion || "N/A"}</TableCell>
+                          <TableCell>{recurso.mobiliario?.rfid?.rfid || "N/A"}</TableCell>
+                        </>
+                      )}
+                      {filtroTipo === "todos" && (
+                        <>
+                          <TableCell>
+                            {recurso.libro?.titulo ||
+                              recurso.equipo?.descripcion ||
+                              recurso.mobiliario?.descripcion ||
+                              "Sin descripción"}
+                          </TableCell>
+                          <TableCell>
+                            {recurso.libro?.rfid?.rfid ||
+                              recurso.equipo?.rfid?.rfid ||
+                              recurso.mobiliario?.rfid?.rfid ||
+                              "N/A"}
+                          </TableCell>
+                        </>
+                      )}
                     </TableRow>
                   ))}
               </TableBody>
@@ -302,7 +419,7 @@ const Loan = () => {
           <TablePagination
             rowsPerPageOptions={[5, 10, 15]}
             component="div"
-            count={recursos.length}
+            count={recursosFiltrados.length}
             rowsPerPage={rowsPerPageRecursos}
             page={pageRecursos}
             onPageChange={(event, newPage) => setPageRecursos(newPage)}

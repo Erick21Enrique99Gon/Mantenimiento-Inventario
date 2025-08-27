@@ -10,13 +10,20 @@ RUN npm install -g npm@10.8.2
 COPY package*.json package-lock.json .npmrc ./
 
 # Limpiar la caché de npm y luego instalar dependencias
+# RUN npm cache clean --force && npm ci --legacy-peer-deps
+# Forzar instalación de todas las dependencias, incluidas devDependencies
+ENV NODE_ENV=development
 RUN npm cache clean --force && npm ci --legacy-peer-deps
 
 # Copiar el código fuente
 COPY . .
 
+# Dar permisos al ejecutable de Nest y construir
+RUN chmod +x node_modules/.bin/nest && npx nest build
+
 # Construir la aplicación
-RUN npm run build
+# RUN npm run build
+RUN npx nest build
 
 # Etapa final
 FROM node:18.20.5

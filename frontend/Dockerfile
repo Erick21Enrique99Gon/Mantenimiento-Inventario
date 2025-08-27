@@ -6,7 +6,8 @@ COPY package.json package-lock.json ./
 RUN npm install --force
 
 COPY . .
-RUN npm run build
+# RUN npm run build
+RUN npx vite build
 
 # Nginx para servir la aplicación
 FROM nginx:alpine
