@@ -36,18 +36,19 @@ const Loan = () => {
   const [selectedRecurso, setSelectedRecurso] = useState(null);
   const [observacion, setObservacion] = useState("");
   const [imagen, setImagen] = useState(null);
+
   // Estados para la paginación
   const [pageUsuarios, setPageUsuarios] = useState(0);
   const [rowsPerPageUsuarios, setRowsPerPageUsuarios] = useState(5);
-
   const [pageRecursos, setPageRecursos] = useState(0);
   const [rowsPerPageRecursos, setRowsPerPageRecursos] = useState(5);
-
   const [pagePrestamos, setPagePrestamos] = useState(0);
   const [rowsPerPagePrestamos, setRowsPerPagePrestamos] = useState(5);
+
   const [usuarioLogueado, setUsuarioLogueado] = useState(null);
+
   // Filtros
-  const [filtroTipo, setFiltroTipo] = useState("todos"); // "libros", "equipos", "mobiliario", "todos"
+  const [filtroTipo, setFiltroTipo] = useState("todos");
 
   useEffect(() => {
     const init = async () => {
@@ -66,73 +67,63 @@ const Loan = () => {
     };
     init();
   }, []);
-  
 
   const fetchUsuarios = async () => {
     try {
       const data = await getUsuarios();
-      setUsuarios(data || []); // ✅ Evitar `undefined`
+      setUsuarios(data || []);
     } catch (error) {
       console.error("Error obteniendo usuarios:", error);
       setUsuarios([]);
     }
   };
 
-const fetchRecursos = async () => {
-  try {
-    const data = await getRecursos();
-    if (!Array.isArray(data)) {
-      console.error("❌ La respuesta de recursos no es un array:", data);
-      return;
+  const fetchRecursos = async () => {
+    try {
+      const data = await getRecursos();
+      if (!Array.isArray(data)) {
+        console.error("❌ La respuesta de recursos no es un array:", data);
+        return;
+      }
+
+      // Filtrar solo recursos con estado "Disponible"
+      const disponibles = data.filter((recurso) => {
+        const estadoDescripcion = recurso.estado?.descripcion?.toLowerCase() || "";
+        return estadoDescripcion === "disponible";
+      });
+
+      console.log(disponibles);
+      setRecursos(disponibles);
+    } catch (error) {
+      console.error("❌ Error obteniendo recursos:", error);
+      setRecursos([]);
     }
-
-    // Filtrar solo recursos con estado "Disponible"
-    const disponibles = data.filter((recurso) => {
-      const estadoDescripcion = recurso.estado?.descripcion?.toLowerCase() || "";
-      return estadoDescripcion === "disponible";
-    });
-    console.log(disponibles)
-    setRecursos(disponibles);
-  } catch (error) {
-    console.error("❌ Error obteniendo recursos:", error);
-    setRecursos([]);
-  }
-};
-
+  };
 
   const fetchPrestamos = async () => {
     try {
-      // Ejecutamos todas las solicitudes simultáneamente
       const [prestamosData, detallesPrestamoData, historialesData, recursosData] = await Promise.all([
-        getPrestamos(), // Obtiene los préstamos básicos
-        getDetallesPrestamo(), // Obtiene los detalles (recurso asignado)
-        getHistoriales(), // Obtiene la relación con usuario
-        getRecursos() // Obtiene detalles de los recursos
+        getPrestamos(),
+        getDetallesPrestamo(),
+        getHistoriales(),
+        getRecursos()
       ]);
-  
-      if (!Array.isArray(prestamosData) || !Array.isArray(detallesPrestamoData) || !Array.isArray(historialesData) || !Array.isArray(recursosData)) {
+
+      if (!Array.isArray(prestamosData) || !Array.isArray(detallesPrestamoData) || 
+          !Array.isArray(historialesData) || !Array.isArray(recursosData)) {
         console.error("❌ Error: Alguna de las respuestas no es un array.");
         return;
       }
-  
-      // Filtrar préstamos activos
-      const prestamosActivos = prestamosData.filter(p => p.estado?.descripcion === "Activo");
-  
-      // Estructurar datos combinando los cuatro endpoints
-      const prestamosFinales = prestamosActivos.map(prestamo => {
-        // Buscar detalle de préstamo relacionado
-        const detalle = detallesPrestamoData.find(d => d.prestamo?.prestamoId === prestamo.prestamoId) || {};
-        
-        // Buscar historial con estructura completa
-        const historial = historialesData.find(h => h.prestamo?.prestamoId === prestamo.prestamoId);
 
+      const prestamosActivos = prestamosData.filter(p => p.estado?.descripcion === "Activo");
+
+      const prestamosFinales = prestamosActivos.map(prestamo => {
+        const detalle = detallesPrestamoData.find(d => d.prestamo?.prestamoId === prestamo.prestamoId) || {};
+        const historial = historialesData.find(h => h.prestamo?.prestamoId === prestamo.prestamoId);
         const prestario = historial?.usuario_prestario || {};
         const prestamista = historial?.usuario_prestamista || {};
-  
-        // Buscar el recurso completo
         const recursoCompleto = recursosData.find(r => r.recursoId === detalle.recurso?.recursoId) || {};
-  
-        // Determinar el tipo de recurso y extraer la información relevante
+
         let recursoDescripcion = "Sin descripción";
         if (recursoCompleto.libro) {
           recursoDescripcion = `Libro: ${recursoCompleto.libro.titulo} - ${recursoCompleto.libro.autor}`;
@@ -141,7 +132,7 @@ const fetchRecursos = async () => {
         } else if (recursoCompleto.equipo) {
           recursoDescripcion = `Equipo: ${recursoCompleto.equipo.descripcion}`;
         }
-  
+
         return {
           id: prestamo.prestamoId,
           observacion: prestamo.observacion,
@@ -156,14 +147,15 @@ const fetchRecursos = async () => {
           recurso: {
             recursoId: recursoCompleto.recursoId || "N/A",
             descripcion: recursoDescripcion,
-            ubicacion: recursoCompleto.libro?.ubicacion?.descripcion ||
-                       recursoCompleto.mobiliario?.ubicacion?.descripcion ||
-                       recursoCompleto.equipo?.ubicacion?.descripcion || "Ubicación no disponible",
+            ubicacion: recursoCompleto.libro?.ubicacion?.descripcion || 
+                       recursoCompleto.mobiliario?.ubicacion?.descripcion || 
+                       recursoCompleto.equipo?.ubicacion?.descripcion || 
+                       "Ubicación no disponible",
             estado: recursoCompleto.estado?.descripcion || "Desconocido",
           },
         };
       });
-  
+
       setPrestamos(prestamosFinales);
     } catch (error) {
       console.error("❌ Error obteniendo préstamos combinados:", error);
@@ -180,19 +172,19 @@ const fetchRecursos = async () => {
       alert("Debe seleccionar un usuario, un recurso y estar logueado");
       return;
     }
-  
+
     if (!observacion.trim()) {
       alert("Debe ingresar una observación");
       return;
     }
-  
+
     const prestamoPayload = {
       recursoId: selectedRecurso.recursoId,
       usuarioPrestarioId: selectedUsuario.usuarioId,
       usuarioPrestamistaId: usuarioLogueado.usuarioId,
       observacion: observacion.trim(),
     };
-  
+
     try {
       await realizarPrestamo(prestamoPayload, imagen);
       alert("✅ Préstamo realizado exitosamente");
@@ -210,9 +202,9 @@ const fetchRecursos = async () => {
     if (filtroTipo === "libros") return !!recurso.libro;
     if (filtroTipo === "equipos") return !!recurso.equipo;
     if (filtroTipo === "mobiliario") return !!recurso.mobiliario;
-    return true; // "todos"
+    return true;
   });
-  
+
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" sx={{ mb: 3, fontWeight: "bold", textAlign: "center" }}>
@@ -239,13 +231,21 @@ const fetchRecursos = async () => {
               </TableHead>
               <TableBody>
                 {usuarios
-                  .filter((user) => (user.nombres || "").toLowerCase().includes(searchUsuario.toLowerCase()))
-                  .slice(pageUsuarios * rowsPerPageUsuarios, pageUsuarios * rowsPerPageUsuarios + rowsPerPageUsuarios)
+                  .filter((user) =>
+                    (user.nombres || "").toLowerCase().includes(searchUsuario.toLowerCase())
+                  )
+                  .slice(
+                    pageUsuarios * rowsPerPageUsuarios,
+                    pageUsuarios * rowsPerPageUsuarios + rowsPerPageUsuarios
+                  )
                   .map((user) => (
                     <TableRow
                       key={user.usuarioId}
                       onClick={() => setSelectedUsuario(user)}
-                      sx={{ cursor: "pointer", backgroundColor: selectedUsuario?.usuarioId === user.usuarioId ? "#f0f0f0" : "" }}
+                      sx={{
+                        cursor: "pointer",
+                        backgroundColor: selectedUsuario?.usuarioId === user.usuarioId ? "#f0f0f0" : "",
+                      }}
                     >
                       <TableCell>{user.nombres} {user.apellidos}</TableCell>
                       <TableCell>{user.carnet}</TableCell>
@@ -271,20 +271,16 @@ const fetchRecursos = async () => {
 
         {/* Tabla de Recursos */}
         <Box sx={{ flex: 1 }}>
-        <TextField
+          <TextField
             label="Buscar recurso o RFID"
             variant="outlined"
             fullWidth
             onChange={(e) => setSearchRecurso(e.target.value)}
           />
 
-          {/* Selector de tipo de recurso */}
           <FormControl fullWidth sx={{ mt: 2 }}>
             <InputLabel>Tipo de recurso</InputLabel>
-            <Select
-              value={filtroTipo}
-              onChange={(e) => setFiltroTipo(e.target.value)}
-            >
+            <Select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)}>
               <MenuItem value="todos">Todos</MenuItem>
               <MenuItem value="libros">Libros</MenuItem>
               <MenuItem value="equipos">Equipos</MenuItem>
@@ -296,9 +292,9 @@ const fetchRecursos = async () => {
             <Table>
               <TableHead>
                 <TableRow>
-                  {/* Columnas dinámicas según filtro */}
                   {filtroTipo === "libros" && (
                     <React.Fragment key="libros">
+                      <TableCell>Codigo de Inventario</TableCell>
                       <TableCell>Título</TableCell>
                       <TableCell>Autor</TableCell>
                       <TableCell>ISBN</TableCell>
@@ -308,6 +304,7 @@ const fetchRecursos = async () => {
                   )}
                   {filtroTipo === "equipos" && (
                     <>
+                      <TableCell>Codigo de Inventario</TableCell>
                       <TableCell>Descripción</TableCell>
                       <TableCell>Categoria Equipo</TableCell>
                       <TableCell>Tipo equipo</TableCell>
@@ -317,6 +314,7 @@ const fetchRecursos = async () => {
                   )}
                   {filtroTipo === "mobiliario" && (
                     <>
+                      <TableCell>Codigo de Inventario</TableCell>
                       <TableCell>Descripción</TableCell>
                       <TableCell>Tipo</TableCell>
                       <TableCell>Ubicación</TableCell>
@@ -325,32 +323,19 @@ const fetchRecursos = async () => {
                   )}
                   {filtroTipo === "todos" && (
                     <>
+                      <TableCell>Codigo de Inventario</TableCell>
                       <TableCell>Descripción</TableCell>
                       <TableCell>RFID</TableCell>
                     </>
                   )}
                 </TableRow>
               </TableHead>
-
               <TableBody>
                 {recursosFiltrados
                   .filter((recurso) => {
                     const texto = searchRecurso.toLowerCase();
-                    return (
-                      (recurso.libro?.titulo ||
-                        recurso.equipo?.descripcion ||
-                        recurso.mobiliario?.descripcion ||
-                        recurso.equipo?.categoria_equipo.descripcion||
-                        recurso.equipo?.tipoEquipo.descripcion ||
-                        recurso.mobiliario?.tipoMobiliario.descripcion ||
-                        recurso.equipo?.ubicacion.descripcion ||
-                        recurso.mobiliario?.ubicacion.descripcion ||
-                        "").toLowerCase().includes(texto) ||
-                      (recurso.libro?.rfid?.rfid ||
-                        recurso.equipo?.rfid?.rfid ||
-                        recurso.mobiliario?.rfid?.rfid ||
-                        "").includes(texto)
-                    );
+                    const concatenado = `${recurso.libro?.titulo || ""} ${recurso.equipo?.descripcion || ""} ${recurso.mobiliario?.descripcion || ""} ${recurso.equipo?.categoria_equipo?.descripcion || ""} ${recurso.equipo?.tipoEquipo?.descripcion || ""} ${recurso.mobiliario?.tipoMobiliario?.descripcion || ""} ${recurso.equipo?.ubicacion?.descripcion || ""} ${recurso.mobiliario?.ubicacion?.descripcion || ""} ${recurso.libro?.numero || ""} ${recurso.libro?.codigoLibro?.descripcion || ""} ${recurso.equipo?.codigoInventario?.codigo || ""} ${recurso.mobiliario?.codigoInventario?.codigo || ""} ${recurso.libro?.rfid?.rfid || ""} ${recurso.equipo?.rfid?.rfid || ""} ${recurso.mobiliario?.rfid?.rfid || ""}`.toLowerCase();
+                    return concatenado.includes(texto);
                   })
                   .slice(
                     pageRecursos * rowsPerPageRecursos,
@@ -362,15 +347,14 @@ const fetchRecursos = async () => {
                       onClick={() => setSelectedRecurso(recurso)}
                       sx={{
                         cursor: "pointer",
-                        backgroundColor:
-                          selectedRecurso?.recursoId === recurso.recursoId
-                            ? "#f0f0f0"
-                            : "",
+                        backgroundColor: selectedRecurso?.recursoId === recurso.recursoId ? "#f0f0f0" : "",
                       }}
                     >
-                      {/* Filas dinámicas */}
                       {filtroTipo === "libros" && (
                         <>
+                          <TableCell>
+                            {`(${recurso.libro?.numero || ""} ${recurso.libro?.codigoLibro?.descripcion || ""})` || "Sin codigo"}
+                          </TableCell>
                           <TableCell>{recurso.libro?.titulo || "Sin título"}</TableCell>
                           <TableCell>{recurso.libro?.autor || "Desconocido"}</TableCell>
                           <TableCell>{recurso.libro?.isbn || "N/A"}</TableCell>
@@ -380,6 +364,7 @@ const fetchRecursos = async () => {
                       )}
                       {filtroTipo === "equipos" && (
                         <>
+                          <TableCell>{recurso.equipo?.codigoInventario?.codigo || "Sin codigo"}</TableCell>
                           <TableCell>{recurso.equipo?.descripcion || "Sin descripción"}</TableCell>
                           <TableCell>{recurso.equipo?.categoria_equipo.descripcion || "N/A"}</TableCell>
                           <TableCell>{recurso.equipo?.tipoEquipo.descripcion || "N/A"}</TableCell>
@@ -389,14 +374,23 @@ const fetchRecursos = async () => {
                       )}
                       {filtroTipo === "mobiliario" && (
                         <>
+                          <TableCell>{recurso.mobiliario?.codigoInventario?.codigo || "Sin código"}</TableCell>
                           <TableCell>{recurso.mobiliario?.descripcion || "Sin descripción"}</TableCell>
-                          <TableCell>{recurso.mobiliario?.tipoMobiliario.descripcion || "N/A"}</TableCell>
+                          <TableCell>{recurso.mobiliario?.tipoMobiliario?.descripcion || "N/A"}</TableCell>
                           <TableCell>{recurso.mobiliario?.ubicacion?.descripcion || "N/A"}</TableCell>
                           <TableCell>{recurso.mobiliario?.rfid?.rfid || "N/A"}</TableCell>
                         </>
                       )}
                       {filtroTipo === "todos" && (
                         <>
+                          <TableCell>
+                            {(recurso.libro?.numero || recurso.libro?.codigoLibro?.descripcion
+                              ? `${recurso.libro?.numero || ""} ${recurso.libro?.codigoLibro?.descripcion || ""}`
+                              : null) ||
+                              recurso.equipo?.codigoInventario?.codigo ||
+                              recurso.mobiliario?.codigoInventario?.codigo ||
+                              "N/A"}
+                          </TableCell>
                           <TableCell>
                             {recurso.libro?.titulo ||
                               recurso.equipo?.descripcion ||
@@ -446,15 +440,18 @@ const fetchRecursos = async () => {
         </Button>
         {imagen && <Typography sx={{ mt: 1 }}>Imagen seleccionada: {imagen.name}</Typography>}
       </Box>
+
       {usuarioLogueado ? (
         <Typography sx={{ mt: 2 }}>
-          <strong>Usuario logueado (Prestamista):</strong> {usuarioLogueado.nombres} {usuarioLogueado.apellidos}
+          <strong>Usuario logueado (Prestamista):</strong> {usuarioLogueado.nombres}{" "}
+          {usuarioLogueado.apellidos}
         </Typography>
       ) : (
         <Typography sx={{ mt: 2, color: "red" }}>
           ⚠️ No se pudo obtener al usuario logueado. Verifique la sesión o autenticación.
         </Typography>
       )}
+
       <Button variant="contained" color="primary" sx={{ mt: 2 }} fullWidth onClick={handlePrestamo}>
         Realizar Préstamo
       </Button>
@@ -462,36 +459,47 @@ const fetchRecursos = async () => {
       {/* Tabla de Préstamos Activos */}
       <Box sx={{ mt: 4 }}>
         <Typography variant="h6">Préstamos Activos</Typography>
-        <TextField label="Buscar préstamo" variant="outlined" fullWidth sx={{ mb: 2 }} onChange={(e) => setSearchPrestamo(e.target.value)} />
+        <TextField
+          label="Buscar préstamo"
+          variant="outlined"
+          fullWidth
+          sx={{ mb: 2 }}
+          onChange={(e) => setSearchPrestamo(e.target.value)}
+        />
         <TableContainer component={Paper}>
           <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>ID Préstamo</TableCell>
-              <TableCell>Prestario</TableCell>
-              <TableCell>Prestamista</TableCell>
-              <TableCell>Recurso</TableCell>
-              <TableCell>Ubicacion</TableCell>
-              <TableCell>Estado</TableCell>
-              <TableCell>Observación</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {prestamos
-              .filter((p) => (p.prestario?.nombres || "").toLowerCase().includes(searchPrestamo.toLowerCase()))
-              .slice(pagePrestamos * rowsPerPagePrestamos, pagePrestamos * rowsPerPagePrestamos + rowsPerPagePrestamos)
-              .map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell>{p.id}</TableCell>
-                  <TableCell>{p.prestario.nombres} {p.prestario.apellidos}</TableCell>
-                  <TableCell>{p.prestamista.nombres} {p.prestamista.apellidos}</TableCell>
-                  <TableCell>{p.recurso.descripcion}</TableCell>
-                  <TableCell>{p.recurso.ubicacion}</TableCell>
-                  <TableCell>{p.recurso.estado}</TableCell>
-                  <TableCell>{p.observacion}</TableCell>
-                </TableRow>
-              ))}
-          </TableBody>
+            <TableHead>
+              <TableRow>
+                <TableCell>ID Préstamo</TableCell>
+                <TableCell>Prestario</TableCell>
+                <TableCell>Prestamista</TableCell>
+                <TableCell>Recurso</TableCell>
+                <TableCell>Ubicacion</TableCell>
+                <TableCell>Estado</TableCell>
+                <TableCell>Observación</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {prestamos
+                .filter((p) =>
+                  (p.prestario?.nombres || "").toLowerCase().includes(searchPrestamo.toLowerCase())
+                )
+                .slice(
+                  pagePrestamos * rowsPerPagePrestamos,
+                  pagePrestamos * rowsPerPagePrestamos + rowsPerPagePrestamos
+                )
+                .map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell>{p.id}</TableCell>
+                    <TableCell>{p.prestario.nombres} {p.prestario.apellidos}</TableCell>
+                    <TableCell>{p.prestamista.nombres} {p.prestamista.apellidos}</TableCell>
+                    <TableCell>{p.recurso.descripcion}</TableCell>
+                    <TableCell>{p.recurso.ubicacion}</TableCell>
+                    <TableCell>{p.recurso.estado}</TableCell>
+                    <TableCell>{p.observacion}</TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
           </Table>
         </TableContainer>
         <TablePagination
