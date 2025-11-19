@@ -15,6 +15,9 @@ import { Editorial } from 'src/editorial/entities/editorial.entity';
 import { Libro } from 'src/libro/entities/libro.entity';
 import { CodigoLibro } from 'src/codigo_libro/entities/codigo_libro.entity';
 
+import { Recurso } from 'src/recurso/entities/recurso.entity';
+
+import { Estado } from 'src/estado/entities/estado.entity';
 
 export class ProcedimientosService {
   constructor(
@@ -307,14 +310,11 @@ async realizarPrestamo(body: any) {
   }
 
 async cargaMasicaEquipo(body: any[]) {
-  const queryRunner = this.dataSource.createQueryRunner();
-  await queryRunner.connect();
-  await queryRunner.startTransaction();
   const { codigosSolo } = await this.obtenerUnicosCodigoInventarioRFID();
-
+  
   const errores = [];
   const exitosos = [];
-
+  
   const camposRequeridos = [
     'codigo de inventario',
     'Tipo',
@@ -324,107 +324,133 @@ async cargaMasicaEquipo(body: any[]) {
     'TResp',
     'Valor',
   ];
-
-  try {
-    for (let index = 0; index < body.length; index++) {
-      const element = body[index];
-
-      // Validar campos vacíos
-      const camposVacios = camposRequeridos.filter(campo => {
-        const val = element[campo];
-        return val === undefined || val === null || val.toString().trim() === '';
+  
+  for (let index = 0; index < body.length; index++) {
+    const element = body[index];
+    
+    // Validar campos vacíos
+    const camposVacios = camposRequeridos.filter(campo => {
+      const val = element[campo];
+      return val === undefined || val === null || val.toString().trim() === '';
+    });
+    
+    if (camposVacios.length > 0) {
+      errores.push({
+        fila: index + 1,
+        codigo: element['codigo de inventario'] || 'N/A',
+        error: `Faltan datos en los campos: ${camposVacios.join(', ')}`,
+        datos: element
       });
-
-      if (camposVacios.length > 0) {
-        errores.push({
-          fila: index + 1,
-          codigo: element['codigo de inventario'] || 'N/A',
-          error: `Faltan datos en los campos: ${camposVacios.join(', ')}`,
-          datos: element // 🔹 guardamos todo el elemento
-        });
-        continue;
-      }
-
-      try {
-        // Verificar si código ya existe
-        if (codigosSolo.includes(element['codigo de inventario'])) {
-          errores.push({
-            fila: index + 1,
-            codigo: element['codigo de inventario'],
-            error: 'El código de inventario ya existe',
-            datos: element // 🔹 guardamos todo el elemento
-          });
-          continue;
-        }
-
-        const codigoInventarioNuevo = await queryRunner.manager.create(CodigoInventario, {
-          codigo: element['codigo de inventario'],
-        });
-        await queryRunner.manager.save(codigoInventarioNuevo);
-
-        let TipoEquipoId = await this.TipoEquipo.findOne({ where: [{ descripcion: element['Tipo'] }] });
-        if (!TipoEquipoId) {
-          TipoEquipoId = await queryRunner.manager.create(TipoEquipo, {
-            descripcion: element['Tipo'],
-          });
-          await queryRunner.manager.save(TipoEquipoId);
-        }
-
-        let CategoriaEquipoId = await this.CategoriaEquipo.findOne({ where: [{ descripcion: element['Categoria de Equipo'] }] });
-        if (!CategoriaEquipoId) {
-          const CategoriaEquipoIdNuevo = await queryRunner.manager.create(CategoriaEquipo, {
-            descripcion: element['Categoria de Equipo'],
-          });
-          await queryRunner.manager.save(CategoriaEquipoIdNuevo);
-          CategoriaEquipoId = await this.CategoriaEquipo.findOne({ where: [{ descripcion: element['Categoria de Equipo'] }] });
-        }
-
-        const ubicacionId = await this.Ubicacion.findOne({ where: [{ descripcion: element['Ubicacion'] }] });
-
-        const resultCreateEquipo = await queryRunner.manager.create(Equipo, {
-          codigoInventario: codigoInventarioNuevo,
-          descripcion: element['Descripcion'],
-          tresp: Number(element['TResp']),
-          valor: Number(element['Valor']),
-          rfid: null,
-          estado: { estadoId: 1 },
-          categoria_equipo: CategoriaEquipoId,
-          tipoEquipo: TipoEquipoId,
-          ubicacion: ubicacionId,
-        });
-        await queryRunner.manager.save(resultCreateEquipo);
-
-        exitosos.push(element);
-      } catch (error) {
-        errores.push({
-          fila: index + 1,
-          codigo: element['codigo de inventario'],
-          error: error.message || 'Error desconocido',
-          datos: element // 🔹 guardamos todo el elemento
-        });
-      }
+      continue;
     }
-
-    await queryRunner.commitTransaction();
-  } catch (err) {
-    await queryRunner.rollbackTransaction();
-    throw err;
-  } finally {
-    await queryRunner.release();
+    
+    if (codigosSolo.includes(element['codigo de inventario'])) {
+      errores.push({
+        fila: index + 1,
+        codigo: element['codigo de inventario'],
+        error: 'El código de inventario ya existe',
+        datos: element
+      });
+      continue;
+    }
+    
+    // 🔹 Transacción individual por registro
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    
+    try {
+      const codigoInventarioNuevo = await queryRunner.manager.create(CodigoInventario, {
+        codigo: element['codigo de inventario'],
+      });
+      await queryRunner.manager.save(codigoInventarioNuevo);
+      
+      // 🔹 Buscar TipoEquipo
+      let TipoEquipoId = await queryRunner.manager.findOne(TipoEquipo, {
+        where: { descripcion: element['Tipo'] }
+      });
+      if (!TipoEquipoId) {
+        TipoEquipoId = await queryRunner.manager.create(TipoEquipo, {
+          descripcion: element['Tipo'],
+        });
+        await queryRunner.manager.save(TipoEquipoId);
+      }
+      
+      // 🔹 Buscar CategoriaEquipo
+      let CategoriaEquipoId = await queryRunner.manager.findOne(CategoriaEquipo, {
+        where: { descripcion: element['Categoria de Equipo'] }
+      });
+      if (!CategoriaEquipoId) {
+        CategoriaEquipoId = await queryRunner.manager.create(CategoriaEquipo, {
+          descripcion: element['Categoria de Equipo'],
+        });
+        await queryRunner.manager.save(CategoriaEquipoId);
+      }
+      
+      const ubicacionId = await queryRunner.manager.findOne(Ubicacion, {
+        where: { descripcion: element['Ubicacion'] }
+      });
+      
+      if (!ubicacionId) {
+        throw new Error(`Ubicación '${element['Ubicacion']}' no encontrada`);
+      }
+      
+      // 🔹 CREAR EQUIPO SIN ESTADO
+      const resultCreateEquipo = await queryRunner.manager.create(Equipo, {
+        codigoInventario: codigoInventarioNuevo,
+        descripcion: element['Descripcion'],
+        tresp: Number(element['TResp']),
+        valor: Number(element['Valor']),
+        rfid: null,
+        // ❌ Sin estado para Equipo
+        categoria_equipo: CategoriaEquipoId,
+        tipoEquipo: TipoEquipoId,
+        ubicacion: ubicacionId,
+      });
+      await queryRunner.manager.save(resultCreateEquipo);
+      
+      // 🔹 OBTENER ESTADO 'Disponible' SOLO PARA RECURSO
+      const estado = await queryRunner.manager.findOne(Estado, {
+        where: { descripcion: 'Disponible' }
+      });
+      if (!estado) {
+        throw new Error("Estado 'Disponible' no encontrado en la base de datos");
+      }
+      
+      // 🔹 CREAR RECURSO CON ESTADO DISPONIBLE
+      const recurso = await queryRunner.manager.create(Recurso, {
+        libro: null,
+        equipo: resultCreateEquipo,
+        mobiliario: null,
+        estado: estado, // ✅ Solo el Recurso tiene estado
+        imagen_recurso: null,
+      });
+      await queryRunner.manager.save(recurso);
+      
+      await queryRunner.commitTransaction();
+      exitosos.push(element);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      errores.push({
+        fila: index + 1,
+        codigo: element['codigo de inventario'],
+        error: error.message || 'Error desconocido',
+        datos: element
+      });
+    } finally {
+      await queryRunner.release();
+    }
   }
-
+  
   return { exitosos, errores };
 }
 
-async cargaMasicaMobiliario(body: any[]) {
-  const queryRunner = this.dataSource.createQueryRunner();
-  await queryRunner.connect();
-  await queryRunner.startTransaction();
 
+async cargaMasicaMobiliario(body: any[]) {
   const codigosSolo = (await this.CodigoInventario.find()).map(item => item.codigo);
   const errores = [];
   const exitosos = [];
-
+  
   const camposRequeridos = [
     'codigo de inventario',
     'Tipo',
@@ -433,98 +459,117 @@ async cargaMasicaMobiliario(body: any[]) {
     'TResp',
     'Valor',
   ];
-
-  try {
-    for (let index = 0; index < body.length; index++) {
-      const element = body[index];
-
-      const camposVacios = camposRequeridos.filter(campo => {
-        const val = element[campo];
-        return val === undefined || val === null || val.toString().trim() === '';
+  
+  for (let index = 0; index < body.length; index++) {
+    const element = body[index];
+    
+    const camposVacios = camposRequeridos.filter(campo => {
+      const val = element[campo];
+      return val === undefined || val === null || val.toString().trim() === '';
+    });
+    
+    if (camposVacios.length > 0) {
+      errores.push({
+        fila: index + 1,
+        codigo: element['codigo de inventario'] || 'N/A',
+        error: `Faltan datos en los campos: ${camposVacios.join(', ')}`,
+        data: element,
       });
-
-      if (camposVacios.length > 0) {
-        errores.push({
-          fila: index + 1,
-          codigo: element['codigo de inventario'] || 'N/A',
-          error: `Faltan datos en los campos: ${camposVacios.join(', ')}`,
-          data: element, // 🔹 Se envía toda la data
-        });
-        continue;
-      }
-
-      try {
-        if (codigosSolo.includes(element['codigo de inventario'])) {
-          errores.push({
-            fila: index + 1,
-            codigo: element['codigo de inventario'],
-            error: 'El código de inventario ya existe',
-            data: element, // 🔹 Se envía toda la data
-          });
-          continue;
-        }
-
-        const codigoInventarioNuevo = queryRunner.manager.create(CodigoInventario, {
-          codigo: element['codigo de inventario'],
-        });
-        await queryRunner.manager.save(codigoInventarioNuevo);
-
-        const ubicacionId = await this.Ubicacion.findOne({
-          where: [{ descripcion: element['Ubicacion'] }],
-        });
-
-        let tipoMobiliarioId = await this.TipoMobiliario.findOne({
-          where: [{ descripcion: element['Tipo'] }],
-        });
-        if (!tipoMobiliarioId) {
-          tipoMobiliarioId = queryRunner.manager.create(TipoMobiliario, {
-            descripcion: element['Tipo'],
-          });
-          await queryRunner.manager.save(tipoMobiliarioId);
-        }
-
-        const resultCreateMobiliario = queryRunner.manager.create(Mobiliario, {
-          codigoInventario: codigoInventarioNuevo,
-          descripcion: element['Descripcion'],
-          tresp: Number(element['TResp']),
-          valor: Number(element['Valor']),
-          rfid: null,
-          estado: { estadoId: 1 },
-          ubicacion: ubicacionId,
-          tipoMobiliario: tipoMobiliarioId,
-        });
-        await queryRunner.manager.save(resultCreateMobiliario);
-
-        exitosos.push(element);
-      } catch (errInterno) {
-        errores.push({
-          fila: index + 1,
-          codigo: element['codigo de inventario'],
-          error: errInterno.message || 'Error desconocido',
-          data: element, // 🔹 Se envía toda la data
-        });
-      }
+      continue;
     }
-
-    await queryRunner.commitTransaction();
-  } catch (err) {
-    await queryRunner.rollbackTransaction();
-    throw err;
-  } finally {
-    await queryRunner.release();
+    
+    if (codigosSolo.includes(element['codigo de inventario'])) {
+      errores.push({
+        fila: index + 1,
+        codigo: element['codigo de inventario'],
+        error: 'El código de inventario ya existe',
+        data: element,
+      });
+      continue;
+    }
+    
+    // 🔹 Transacción individual por registro
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    
+    try {
+      const codigoInventarioNuevo = await queryRunner.manager.create(CodigoInventario, {
+        codigo: element['codigo de inventario'],
+      });
+      await queryRunner.manager.save(codigoInventarioNuevo);
+      
+      const ubicacionId = await queryRunner.manager.findOne(Ubicacion, {
+        where: { descripcion: element['Ubicacion'] }
+      });
+      
+      if (!ubicacionId) {
+        throw new Error(`Ubicación '${element['Ubicacion']}' no encontrada`);
+      }
+      
+      // 🔹 Buscar TipoMobiliario CON el queryRunner actual
+      let tipoMobiliarioId = await queryRunner.manager.findOne(TipoMobiliario, {
+        where: { descripcion: element['Tipo'] }
+      });
+      if (!tipoMobiliarioId) {
+        tipoMobiliarioId = await queryRunner.manager.create(TipoMobiliario, {
+          descripcion: element['Tipo'],
+        });
+        await queryRunner.manager.save(tipoMobiliarioId);
+      }
+      
+      // 🔹 CREAR MOBILIARIO SIN ESTADO
+      const resultCreateMobiliario = await queryRunner.manager.create(Mobiliario, {
+        codigoInventario: codigoInventarioNuevo,
+        descripcion: element['Descripcion'],
+        tresp: Number(element['TResp']),
+        valor: Number(element['Valor']),
+        rfid: null,
+        ubicacion: ubicacionId,
+        tipoMobiliario: tipoMobiliarioId,
+      });
+      await queryRunner.manager.save(resultCreateMobiliario);
+      
+      // 🔹 OBTENER ESTADO 'Disponible' PARA RECURSO
+      const estado = await queryRunner.manager.findOne(Estado, {
+        where: { descripcion: 'Disponible' }
+      });
+      if (!estado) {
+        throw new Error("Estado 'Disponible' no encontrado en la base de datos");
+      }
+      
+      // 🔹 CREAR RECURSO ASOCIADO AL MOBILIARIO
+      const recurso = await queryRunner.manager.create(Recurso, {
+        libro: null,
+        equipo: null,
+        mobiliario: resultCreateMobiliario, // 🔹 Asociar mobiliario
+        estado: estado,
+        imagen_recurso: null,
+      });
+      await queryRunner.manager.save(recurso);
+      
+      await queryRunner.commitTransaction();
+      exitosos.push(element);
+    } catch (errInterno) {
+      await queryRunner.rollbackTransaction();
+      errores.push({
+        fila: index + 1,
+        codigo: element['codigo de inventario'],
+        error: errInterno.message || 'Error desconocido',
+        data: element,
+      });
+    } finally {
+      await queryRunner.release();
+    }
   }
-
+  
   return { exitosos, errores };
 }
 
 async cargaMasicaLibro(body: any[]) {
-  const queryRunner = this.dataSource.createQueryRunner();
-  await queryRunner.connect();
-  await queryRunner.startTransaction();
-
   const errores = [];
   const exitosos = [];
-
+  
   const camposRequeridos = [
     'TITULO',
     'AUTOR',
@@ -536,94 +581,114 @@ async cargaMasicaLibro(body: any[]) {
     'EDITORIAL',
     'Codigo',
   ];
-
-  try {
-    for (let index = 0; index < body.length; index++) {
-      const element = body[index];
-
-      // Validar campos vacíos
-      const camposVacios = camposRequeridos.filter(campo => {
-        const val = element[campo];
-        return val === undefined || val === null || val.toString().trim() === '';
+  
+  for (let index = 0; index < body.length; index++) {
+    const element = body[index];
+    
+    // Validar campos vacíos
+    const camposVacios = camposRequeridos.filter(campo => {
+      const val = element[campo];
+      return val === undefined || val === null || val.toString().trim() === '';
+    });
+    
+    if (camposVacios.length > 0) {
+      errores.push({
+        fila: index + 1,
+        codigo: element['Codigo'] || 'N/A',
+        error: `Faltan datos en los campos: ${camposVacios.join(', ')}`,
+        elemento: element
       });
-
-      if (camposVacios.length > 0) {
-        errores.push({
-          fila: index + 1,
-          codigo: element['Codigo'] || 'N/A',
-          error: `Faltan datos en los campos: ${camposVacios.join(', ')}`,
-          elemento: element
-        });
-        continue;
-      }
-
-      try {
-        // Buscar ubicación
-        const ubicacionId = await this.Ubicacion.findOne({
-          where: [{ descripcion: element['UBICACION'] }],
-        });
-
-        // Buscar o crear Editorial
-        let editorialId = await this.Editorial.findOne({
-          where: [{ descripcion: element['EDITORIAL'] }],
-        });
-        if (!editorialId) {
-          editorialId = await queryRunner.manager.create(Editorial, {
-            descripcion: element['EDITORIAL'],
-          });
-          await queryRunner.manager.save(editorialId);
-        }
-
-        // Buscar o crear CódigoLibro
-        let codigoId = await this.CodigoLibro.findOne({
-          where: [{ descripcion: element['Codigo'] }],
-        });
-        if (!codigoId) {
-          codigoId = await queryRunner.manager.create(CodigoLibro, {
-            descripcion: element['Codigo'],
-          });
-          await queryRunner.manager.save(codigoId);
-        }
-
-        // Crear registro de libro
-        const nuevoLibro = await queryRunner.manager.create(Libro, {
-          titulo: element['TITULO'],
-          autor: element['AUTOR'],
-          isbn: element['ISBN'],
-          edicion: element['EDICION'],
-          anio: element['Anio'],
-          numero: element['Numero'],
-          tresp: Number(element['TResp']),
-          valor: Number(element['Valor']),
-          rfid: null,
-          estado: { estadoId: 1 },
-          ubicacion: ubicacionId,
-          editorial: editorialId,
-          codigoLibro: codigoId,
-        });
-        await queryRunner.manager.save(nuevoLibro);
-
-        exitosos.push(element);
-      } catch (errInterno) {
-        errores.push({
-          fila: index + 1,
-          codigo: element['Codigo'] || 'N/A',
-          error: errInterno.message || 'Error desconocido',
-          elemento: element
-        });
-      }
+      continue;
     }
-
-    await queryRunner.commitTransaction();
-  } catch (err) {
-    await queryRunner.rollbackTransaction();
-    throw err;
-  } finally {
-    await queryRunner.release();
+    
+    // 🔹 Transacción individual por registro
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    
+    try {
+      // Buscar ubicación
+      const ubicacionId = await queryRunner.manager.findOne(Ubicacion, {
+        where: { descripcion: element['UBICACION'] }
+      });
+      
+      if (!ubicacionId) {
+        throw new Error(`Ubicación '${element['UBICACION']}' no encontrada`);
+      }
+      
+      // 🔹 Buscar o crear Editorial CON el queryRunner actual
+      let editorialId = await queryRunner.manager.findOne(Editorial, {
+        where: { descripcion: element['EDITORIAL'] }
+      });
+      if (!editorialId) {
+        editorialId = await queryRunner.manager.create(Editorial, {
+          descripcion: element['EDITORIAL'],
+        });
+        await queryRunner.manager.save(editorialId);
+      }
+      
+      // 🔹 Buscar o crear CodigoLibro CON el queryRunner actual
+      let codigoId = await queryRunner.manager.findOne(CodigoLibro, {
+        where: { descripcion: element['Codigo'] }
+      });
+      if (!codigoId) {
+        codigoId = await queryRunner.manager.create(CodigoLibro, {
+          descripcion: element['Codigo'],
+        });
+        await queryRunner.manager.save(codigoId);
+      }
+      
+      // 🔹 CREAR LIBRO SIN ESTADO
+      const nuevoLibro = await queryRunner.manager.create(Libro, {
+        titulo: element['TITULO'],
+        autor: element['AUTOR'],
+        isbn: element['ISBN'],
+        edicion: element['EDICION'],
+        anio: element['Anio'],
+        numero: element['Numero'],
+        tresp: Number(element['TResp']),
+        valor: Number(element['Valor']),
+        rfid: null,
+        ubicacion: ubicacionId,
+        editorial: editorialId,
+        codigoLibro: codigoId,
+      });
+      await queryRunner.manager.save(nuevoLibro);
+      
+      // 🔹 OBTENER ESTADO 'Disponible' PARA RECURSO
+      const estado = await queryRunner.manager.findOne(Estado, {
+        where: { descripcion: 'Disponible' }
+      });
+      if (!estado) {
+        throw new Error("Estado 'Disponible' no encontrado en la base de datos");
+      }
+      
+      // 🔹 CREAR RECURSO ASOCIADO AL LIBRO
+      const recurso = await queryRunner.manager.create(Recurso, {
+        libro: nuevoLibro, // 🔹 Asociar libro
+        equipo: null,
+        mobiliario: null,
+        estado: estado,
+        imagen_recurso: null,
+      });
+      await queryRunner.manager.save(recurso);
+      
+      await queryRunner.commitTransaction();
+      exitosos.push(element);
+    } catch (errInterno) {
+      await queryRunner.rollbackTransaction();
+      errores.push({
+        fila: index + 1,
+        codigo: element['Codigo'] || 'N/A',
+        error: errInterno.message || 'Error desconocido',
+        elemento: element
+      });
+    } finally {
+      await queryRunner.release();
+    }
   }
-
+  
   return { exitosos, errores };
 }
-
 
 }
