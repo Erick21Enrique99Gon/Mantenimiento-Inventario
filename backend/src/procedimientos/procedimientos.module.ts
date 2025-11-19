@@ -12,6 +12,7 @@ import { Equipo } from 'src/equipo/entities/equipo.entity';
 import { CodigoLibro } from 'src/codigo_libro/entities/codigo_libro.entity';
 import { Editorial } from 'src/editorial/entities/editorial.entity';
 import { Libro } from 'src/libro/entities/libro.entity';
+import { Recurso } from 'src/recurso/entities/recurso.entity';
 
 @Module({
     imports: [
@@ -24,7 +25,8 @@ import { Libro } from 'src/libro/entities/libro.entity';
     TypeOrmModule.forFeature([CodigoLibro]),
     TypeOrmModule.forFeature([Editorial]),
     TypeOrmModule.forFeature([Libro]),
-    TypeOrmModule.forFeature([TipoMobiliario])
+    TypeOrmModule.forFeature([TipoMobiliario]),
+    TypeOrmModule.forFeature([Recurso]),
   ],
   providers: [ProcedimientosService],
   controllers: [ProcedimientosController]

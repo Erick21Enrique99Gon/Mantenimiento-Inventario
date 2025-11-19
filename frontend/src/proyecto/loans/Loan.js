@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo  } from "react";
 import {
   Table,
   TableBody,
@@ -16,6 +16,7 @@ import {
   MenuItem,
   InputLabel,
   FormControl,
+  Grid
 } from "@mui/material";
 import { getUsuarios } from "../../services/usuarioService";
 import { getRecursos } from "../../services/recursoService";
@@ -46,9 +47,26 @@ const Loan = () => {
   const [rowsPerPagePrestamos, setRowsPerPagePrestamos] = useState(5);
 
   const [usuarioLogueado, setUsuarioLogueado] = useState(null);
+  const [filters, setFilters] = useState({
+    codigo: "",
+    descripcion: "",
+    estado: "",
+    ubicacion: "",
+    categoria: "",
+    tipo: ""
+  });
 
-  // Filtros
+
+  const [filtered, setFiltered] = useState([]);
   const [filtroTipo, setFiltroTipo] = useState("todos");
+
+    const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -67,7 +85,7 @@ const Loan = () => {
     };
     init();
   }, []);
-
+  
   const fetchUsuarios = async () => {
     try {
       const data = await getUsuarios();
@@ -198,12 +216,60 @@ const Loan = () => {
     }
   };
 
-  const recursosFiltrados = recursos.filter((recurso) => {
-    if (filtroTipo === "libros") return !!recurso.libro;
-    if (filtroTipo === "equipos") return !!recurso.equipo;
-    if (filtroTipo === "mobiliario") return !!recurso.mobiliario;
+const filteredRecursos = useMemo(() => {
+  let filtrado = recursos.filter((r) => {
+    if (filtroTipo === "libros") return !!r.libro;
+    if (filtroTipo === "equipos") return !!r.equipo;
+    if (filtroTipo === "mobiliario") return !!r.mobiliario;
     return true;
   });
+
+  if (filtroTipo === "equipos") {
+    filtrado = filtrado.filter((e) =>
+      (e.equipo?.codigoInventario?.codigo ?? "")
+        .toLowerCase()
+        .includes((filters.codigo ?? "").toLowerCase()) &&
+      (e.equipo?.descripcion ?? "")
+        .toLowerCase()
+        .includes((filters.descripcion ?? "").toLowerCase()) &&
+      (e.estado?.descripcion ?? "")  // ✅ Keep this - it's correct
+        .toLowerCase()
+        .includes((filters.estado ?? "").toLowerCase()) &&
+      (e.equipo?.ubicacion?.descripcion ?? "")
+        .toLowerCase()
+        .includes((filters.ubicacion ?? "").toLowerCase()) &&
+      (e.equipo?.categoria_equipo?.descripcion ?? "")  // ✅ Already has optional chaining
+        .toLowerCase()
+        .includes((filters.categoria ?? "").toLowerCase()) &&
+      (e.equipo?.tipoEquipo?.descripcion ?? "")
+        .toLowerCase()
+        .includes((filters.tipo ?? "").toLowerCase())
+    );
+  }
+  
+  if (filtroTipo === "mobiliario") {
+    filtrado = filtrado.filter((e) =>
+      (e.mobiliario?.codigoInventario?.codigo ?? "")
+        .toLowerCase()
+        .includes((filters.codigo ?? "").toLowerCase()) &&
+      (e.mobiliario?.descripcion ?? "")
+        .toLowerCase()
+        .includes((filters.descripcion ?? "").toLowerCase()) &&
+      (e.estado?.descripcion ?? "")  // ✅ Add optional chaining here too
+        .toLowerCase()
+        .includes((filters.estado ?? "").toLowerCase()) &&
+      (e.mobiliario?.ubicacion?.descripcion ?? "")
+        .toLowerCase()
+        .includes((filters.ubicacion ?? "").toLowerCase()) &&
+      (e.mobiliario?.tipoMobiliario?.descripcion ?? "")
+        .toLowerCase()
+        .includes((filters.tipo ?? "").toLowerCase())
+    );
+  }
+
+  return filtrado;
+}, [recursos, filtroTipo, filters]);
+
 
   return (
     <Box sx={{ p: 3 }}>
@@ -280,14 +346,171 @@ const Loan = () => {
 
           <FormControl fullWidth sx={{ mt: 2 }}>
             <InputLabel>Tipo de recurso</InputLabel>
-            <Select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)}>
+            <Select value={filtroTipo} 
+              onChange={(e) => {
+              setFiltroTipo(e.target.value);
+              setFilters({
+                codigo: "",
+                descripcion: "",
+                estado: "",
+                ubicacion: "",
+                categoria: "",
+                tipo: ""
+              });
+            }}
+            >
               <MenuItem value="todos">Todos</MenuItem>
               <MenuItem value="libros">Libros</MenuItem>
               <MenuItem value="equipos">Equipos</MenuItem>
               <MenuItem value="mobiliario">Mobiliario</MenuItem>
             </Select>
           </FormControl>
-
+          {(filtroTipo === "equipos" || filtroTipo === "mobiliario") && (
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid item xs={12} sm={6} md={2}>
+                <TextField
+                  label="Filtrar por Código"
+                  variant="outlined"
+                  fullWidth
+                  name="codigo"
+                  value={filters.codigo}
+                  onChange={handleFilterChange}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={2}>
+                <TextField
+                  label="Filtrar por Descripción"
+                  variant="outlined"
+                  fullWidth
+                  name="descripcion"
+                  value={filters.descripcion}
+                  onChange={handleFilterChange}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={2}>
+                <TextField
+                  label="Filtrar por Estado"
+                  variant="outlined"
+                  fullWidth
+                  name="estado"
+                  value={filters.estado}
+                  onChange={handleFilterChange}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={2}>
+                <TextField
+                  label="Filtrar por Ubicación"
+                  variant="outlined"
+                  fullWidth
+                  name="ubicacion"
+                  value={filters.ubicacion}
+                  onChange={handleFilterChange}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={2}>
+                <TextField
+                  label="Filtrar por Categoría"
+                  variant="outlined"
+                  fullWidth
+                  name="categoria"
+                  value={filters.categoria}
+                  onChange={handleFilterChange}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={2}>
+                <TextField
+                  label="Filtrar por Tipo"
+                  variant="outlined"
+                  fullWidth
+                  name="tipo"
+                  value={filters.tipo}
+                  onChange={handleFilterChange}
+                />
+              </Grid>
+            </Grid>
+          )}
+          {
+            filtroTipo === "libros" && (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 2,
+                        mb: 2,
+                        justifyContent: "center"
+                      }}
+                    >
+                      {/* <TextField
+                        label="Buscar título"
+                        variant="outlined"
+                        value={searchTitle}
+                        onChange={(e) => setSearchTitle(e.target.value)}
+                        size="small"
+                      /> */}
+                      {/* <TextField
+                        label="Buscar autor"
+                        variant="outlined"
+                        value={searchAuthor}
+                        onChange={(e) => setSearchAuthor(e.target.value)}
+                        size="small"
+                      />
+                      <TextField
+                        label="Año"
+                        variant="outlined"
+                        type="number"
+                        value={searchYear}
+                        onChange={(e) => setSearchYear(e.target.value)}
+                        size="small"
+                        sx={{ maxWidth: 100 }}
+                      />
+                      <FormControl size="small" sx={{ minWidth: 150 }}>
+                        <InputLabel>Editorial</InputLabel>
+                        <Select
+                          value={selectedEditorial}
+                          onChange={(e) => setSelectedEditorial(e.target.value)}
+                          label="Editorial"
+                        >
+                          <MenuItem value="">Todas</MenuItem>
+                          {editoriales.map((e) => (
+                            <MenuItem key={e.editorialId} value={e.descripcion}>
+                              {e.descripcion}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <FormControl size="small" sx={{ minWidth: 150 }}>
+                        <InputLabel>Código Libro</InputLabel>
+                        <Select
+                          value={selectedCodigo}
+                          onChange={(e) => setSelectedCodigo(e.target.value)}
+                          label="Código Libro"
+                        >
+                          <MenuItem value="">Todos</MenuItem>
+                          {codigosLibro.map((c) => (
+                            <MenuItem key={c.codigoId} value={c.descripcion}>
+                              {c.descripcion}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <FormControl size="small" sx={{ minWidth: 150 }}>
+                        <InputLabel>Estado</InputLabel>
+                        <Select
+                          value={selectedEstado}
+                          onChange={(e) => setSelectedEstado(e.target.value)}
+                          label="Estado"
+                        >
+                          <MenuItem value="">Todos</MenuItem>
+                          {estados.map((e) => (
+                            <MenuItem key={e.estadoId} value={e.descripcion}>
+                              {e.descripcion}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl> */}
+                    </Box>
+            )
+          }
           <TableContainer component={Paper} sx={{ mt: 2 }}>
             <Table>
               <TableHead>
@@ -331,89 +554,137 @@ const Loan = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {recursosFiltrados
-                  .filter((recurso) => {
-                    const texto = searchRecurso.toLowerCase();
-                    const concatenado = `${recurso.libro?.titulo || ""} ${recurso.equipo?.descripcion || ""} ${recurso.mobiliario?.descripcion || ""} ${recurso.equipo?.categoria_equipo?.descripcion || ""} ${recurso.equipo?.tipoEquipo?.descripcion || ""} ${recurso.mobiliario?.tipoMobiliario?.descripcion || ""} ${recurso.equipo?.ubicacion?.descripcion || ""} ${recurso.mobiliario?.ubicacion?.descripcion || ""} ${recurso.libro?.numero || ""} ${recurso.libro?.codigoLibro?.descripcion || ""} ${recurso.equipo?.codigoInventario?.codigo || ""} ${recurso.mobiliario?.codigoInventario?.codigo || ""} ${recurso.libro?.rfid?.rfid || ""} ${recurso.equipo?.rfid?.rfid || ""} ${recurso.mobiliario?.rfid?.rfid || ""}`.toLowerCase();
-                    return concatenado.includes(texto);
-                  })
-                  .slice(
-                    pageRecursos * rowsPerPageRecursos,
-                    pageRecursos * rowsPerPageRecursos + rowsPerPageRecursos
-                  )
-                  .map((recurso) => (
-                    <TableRow
-                      key={recurso.recursoId}
-                      onClick={() => setSelectedRecurso(recurso)}
-                      sx={{
-                        cursor: "pointer",
-                        backgroundColor: selectedRecurso?.recursoId === recurso.recursoId ? "#f0f0f0" : "",
-                      }}
-                    >
-                      {filtroTipo === "libros" && (
-                        <>
-                          <TableCell>
-                            {`(${recurso.libro?.numero || ""} ${recurso.libro?.codigoLibro?.descripcion || ""})` || "Sin codigo"}
-                          </TableCell>
-                          <TableCell>{recurso.libro?.titulo || "Sin título"}</TableCell>
-                          <TableCell>{recurso.libro?.autor || "Desconocido"}</TableCell>
-                          <TableCell>{recurso.libro?.isbn || "N/A"}</TableCell>
-                          <TableCell>{recurso.libro?.editorial.descripcion || "N/A"}</TableCell>
-                          <TableCell>{recurso.libro?.rfid?.rfid || "N/A"}</TableCell>
-                        </>
-                      )}
-                      {filtroTipo === "equipos" && (
-                        <>
-                          <TableCell>{recurso.equipo?.codigoInventario?.codigo || "Sin codigo"}</TableCell>
-                          <TableCell>{recurso.equipo?.descripcion || "Sin descripción"}</TableCell>
-                          <TableCell>{recurso.equipo?.categoria_equipo.descripcion || "N/A"}</TableCell>
-                          <TableCell>{recurso.equipo?.tipoEquipo.descripcion || "N/A"}</TableCell>
-                          <TableCell>{recurso.equipo?.ubicacion?.descripcion || "N/A"}</TableCell>
-                          <TableCell>{recurso.equipo?.rfid?.rfid || "N/A"}</TableCell>
-                        </>
-                      )}
-                      {filtroTipo === "mobiliario" && (
-                        <>
-                          <TableCell>{recurso.mobiliario?.codigoInventario?.codigo || "Sin código"}</TableCell>
-                          <TableCell>{recurso.mobiliario?.descripcion || "Sin descripción"}</TableCell>
-                          <TableCell>{recurso.mobiliario?.tipoMobiliario?.descripcion || "N/A"}</TableCell>
-                          <TableCell>{recurso.mobiliario?.ubicacion?.descripcion || "N/A"}</TableCell>
-                          <TableCell>{recurso.mobiliario?.rfid?.rfid || "N/A"}</TableCell>
-                        </>
-                      )}
-                      {filtroTipo === "todos" && (
-                        <>
-                          <TableCell>
-                            {(recurso.libro?.numero || recurso.libro?.codigoLibro?.descripcion
-                              ? `${recurso.libro?.numero || ""} ${recurso.libro?.codigoLibro?.descripcion || ""}`
-                              : null) ||
-                              recurso.equipo?.codigoInventario?.codigo ||
-                              recurso.mobiliario?.codigoInventario?.codigo ||
-                              "N/A"}
-                          </TableCell>
-                          <TableCell>
-                            {recurso.libro?.titulo ||
-                              recurso.equipo?.descripcion ||
-                              recurso.mobiliario?.descripcion ||
-                              "Sin descripción"}
-                          </TableCell>
-                          <TableCell>
-                            {recurso.libro?.rfid?.rfid ||
-                              recurso.equipo?.rfid?.rfid ||
-                              recurso.mobiliario?.rfid?.rfid ||
-                              "N/A"}
-                          </TableCell>
-                        </>
-                      )}
-                    </TableRow>
-                  ))}
+                {/* LIBROS filtering - only when filtroTipo is "libros" */}
+                {filtroTipo === "libros" &&
+                  filteredRecursos
+                    .slice(
+                      pageRecursos * rowsPerPageRecursos,
+                      pageRecursos * rowsPerPageRecursos + rowsPerPageRecursos
+                    )
+                    .map((recurso) => (
+                      <TableRow
+                        key={recurso.recursoId}
+                        onClick={() => setSelectedRecurso(recurso)}
+                        sx={{
+                          cursor: "pointer",
+                          backgroundColor: selectedRecurso?.recursoId === recurso.recursoId ? "#f0f0f0" : "",
+                        }}
+                      >
+                        <TableCell>
+                          {`(${recurso.libro?.numero || ""} ${recurso.libro?.codigoLibro?.descripcion || ""})` || "Sin codigo"}
+                        </TableCell>
+                        <TableCell>{recurso.libro?.titulo || "Sin título"}</TableCell>
+                        <TableCell>{recurso.libro?.autor || "Desconocido"}</TableCell>
+                        <TableCell>{recurso.libro?.isbn || "N/A"}</TableCell>
+                        <TableCell>{recurso.libro?.editorial?.descripcion || "N/A"}</TableCell>
+                        <TableCell>{recurso.libro?.rfid?.rfid || "N/A"}</TableCell>
+                      </TableRow>
+                    ))
+                }
+
+                {/* EQUIPOS filtering - only when filtroTipo is "equipos" */}
+                {filtroTipo === "equipos" &&
+                  filteredRecursos
+                    .slice(
+                      pageRecursos * rowsPerPageRecursos,
+                      pageRecursos * rowsPerPageRecursos + rowsPerPageRecursos
+                    )
+                    .map((recurso) => (
+                      <TableRow
+                        key={recurso.recursoId}
+                        onClick={() => setSelectedRecurso(recurso)}
+                        sx={{
+                          cursor: "pointer",
+                          backgroundColor: selectedRecurso?.recursoId === recurso.recursoId ? "#f0f0f0" : "",
+                        }}
+                      >
+                        <TableCell>{recurso.equipo?.codigoInventario?.codigo || "Sin codigo"}</TableCell>
+                        <TableCell>{recurso.equipo?.descripcion || "Sin descripción"}</TableCell>
+                        <TableCell>{recurso.equipo?.categoria_equipo?.descripcion || "N/A"}</TableCell>
+                        <TableCell>{recurso.equipo?.tipoEquipo?.descripcion || "N/A"}</TableCell>
+                        <TableCell>{recurso.equipo?.ubicacion?.descripcion || "N/A"}</TableCell>
+                        <TableCell>{recurso.equipo?.rfid?.rfid || "N/A"}</TableCell>
+                      </TableRow>
+                    ))
+                }
+
+                {/* MOBILIARIO filtering - only when filtroTipo is "mobiliario" */}
+                {filtroTipo === "mobiliario" &&
+                  filteredRecursos
+                    .slice(
+                      pageRecursos * rowsPerPageRecursos,
+                      pageRecursos * rowsPerPageRecursos + rowsPerPageRecursos
+                    )
+                    .map((recurso) => (
+                      <TableRow
+                        key={recurso.recursoId}
+                        onClick={() => setSelectedRecurso(recurso)}
+                        sx={{
+                          cursor: "pointer",
+                          backgroundColor: selectedRecurso?.recursoId === recurso.recursoId ? "#f0f0f0" : "",
+                        }}
+                      >
+                        <TableCell>{recurso.mobiliario?.codigoInventario?.codigo || "Sin código"}</TableCell>
+                        <TableCell>{recurso.mobiliario?.descripcion || "Sin descripción"}</TableCell>
+                        <TableCell>{recurso.mobiliario?.tipoMobiliario?.descripcion || "N/A"}</TableCell>
+                        <TableCell>{recurso.mobiliario?.ubicacion?.descripcion || "N/A"}</TableCell>
+                        <TableCell>{recurso.mobiliario?.rfid?.rfid || "N/A"}</TableCell>
+                      </TableRow>
+                    ))
+                }
+
+                {/* TODOS filtering - when filtroTipo is "todos" */}
+                {filtroTipo === "todos" &&
+                  filteredRecursos
+                    .filter((recurso) => {
+                      const texto = searchRecurso.toLowerCase();
+                      const concatenado = `${recurso.libro?.titulo || ""} ${recurso.equipo?.descripcion || ""} ${recurso.mobiliario?.descripcion || ""} ${recurso.equipo?.categoria_equipo?.descripcion || ""} ${recurso.equipo?.tipoEquipo?.descripcion || ""} ${recurso.mobiliario?.tipoMobiliario?.descripcion || ""} ${recurso.equipo?.ubicacion?.descripcion || ""} ${recurso.mobiliario?.ubicacion?.descripcion || ""} ${recurso.libro?.numero || ""} ${recurso.libro?.codigoLibro?.descripcion || ""} ${recurso.equipo?.codigoInventario?.codigo || ""} ${recurso.mobiliario?.codigoInventario?.codigo || ""} ${recurso.libro?.rfid?.rfid || ""} ${recurso.equipo?.rfid?.rfid || ""} ${recurso.mobiliario?.rfid?.rfid || ""}`.toLowerCase();
+                      return concatenado.includes(texto);
+                    })
+                    .slice(
+                      pageRecursos * rowsPerPageRecursos,
+                      pageRecursos * rowsPerPageRecursos + rowsPerPageRecursos
+                    )
+                    .map((recurso) => (
+                      <TableRow
+                        key={recurso.recursoId}
+                        onClick={() => setSelectedRecurso(recurso)}
+                        sx={{
+                          cursor: "pointer",
+                          backgroundColor: selectedRecurso?.recursoId === recurso.recursoId ? "#f0f0f0" : "",
+                        }}
+                      >
+                        <TableCell>
+                          {(recurso.libro?.numero || recurso.libro?.codigoLibro?.descripcion
+                            ? `${recurso.libro?.numero || ""} ${recurso.libro?.codigoLibro?.descripcion || ""}`
+                            : null) ||
+                            recurso.equipo?.codigoInventario?.codigo ||
+                            recurso.mobiliario?.codigoInventario?.codigo ||
+                            "N/A"}
+                        </TableCell>
+                        <TableCell>
+                          {recurso.libro?.titulo ||
+                            recurso.equipo?.descripcion ||
+                            recurso.mobiliario?.descripcion ||
+                            "Sin descripción"}
+                        </TableCell>
+                        <TableCell>
+                          {recurso.libro?.rfid?.rfid ||
+                            recurso.equipo?.rfid?.rfid ||
+                            recurso.mobiliario?.rfid?.rfid ||
+                            "N/A"}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                }
               </TableBody>
+
             </Table>
           </TableContainer>
           <TablePagination
             rowsPerPageOptions={[5, 10, 15]}
             component="div"
-            count={recursosFiltrados.length}
+            count={filteredRecursos.length}
             rowsPerPage={rowsPerPageRecursos}
             page={pageRecursos}
             onPageChange={(event, newPage) => setPageRecursos(newPage)}
